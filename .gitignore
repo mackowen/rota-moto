@@ -1,0 +1,15 @@
+# Local environment and generated files
+.env
+.env.*
+!.env.example
+*.log
+node_modules/
+coverage/
+dist/
+build/
+
+# Local editor and operating system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
