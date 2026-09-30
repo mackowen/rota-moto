@@ -11,6 +11,7 @@ async function normalizeMotoData(){
  await tx('meta','readwrite',st=>st.put({key:'contract',value:{protocolVersion:1,schemaVersion:1,companyId,app:'RotaMoto',updatedAt:new Date().toISOString()}}));
 }
 async function recordDeliveryEvent(type,r,payload={}){try{const ev=RotaMotoContract.event(type,'delivery',r.deliveryId||r.id,payload,{type:'driver',id:state.settings.driverId||null});await tx('deliveryEvents','readwrite',st=>st.put(ev));await tx('outbox','readwrite',st=>st.put({...ev,id:ev.eventId,status:'pending'}));return ev}catch(e){console.warn('delivery event persistence failed',e);return null}}
+function reviseRace(r,at=Date.now()){Object.assign(r,RotaMotoContract.revise(r,at));return r.updatedAt}
 const brl=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});const num=v=>Number(String(v??'').replace(',','.'))||0;const localDateKey=value=>{const d=value instanceof Date?value:new Date(value);if(Number.isNaN(d.getTime()))return '';return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};const localMonthKey=value=>localDateKey(value).slice(0,7);const today=()=>localDateKey(new Date());const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 function toast(msg,type='ok',duration=2600){const t=$('#toast');t.textContent=msg;t.className='toast show '+type;clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.remove('show'),Math.max(800,duration))}
 function runUiIntegrityCheck(){const required=['modal','modalTitle','modalBody','modalActions','raceList','saveRace','newRaceFromRaces','raceSearch'];const missing=required.filter(id=>!document.getElementById(id));if(missing.length)console.warn('Rota Moto: elementos ausentes',missing)}
@@ -26,7 +27,7 @@ function openDB(){if(dbReady)return dbReady;dbReady=new Promise((resolve,reject)
 async function tx(store,mode,fn){const d=await openDB();return new Promise((res,rej)=>{const t=d.transaction(store,mode),s=t.objectStore(store);let out;try{out=fn(s)}catch(e){rej(e);return}t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})}
 async function persistOnly(){
   const snapshot={races:state.races,settings:state.settings};
-  try{await tx('races','readwrite',s=>{s.clear();state.races.forEach(r=>s.put(r))});await tx('meta','readwrite',s=>s.put({key:'settings',value:state.settings}))}catch(e){console.warn('IndexedDB persist failed',e)}
+  try{await tx('races','readwrite',s=>{s.clear();state.races.forEach(r=>s.put(r))});await tx('deliveries','readwrite',s=>{s.clear();state.races.filter(r=>!r.deleted).forEach(r=>s.put(RotaMotoContract.deliveryFromRace(r,state.settings.companyId||'company_local',state.settings.driverId||null)))});await tx('meta','readwrite',s=>s.put({key:'settings',value:state.settings}))}catch(e){console.warn('IndexedDB persist failed',e)}
   try{localStorage.setItem('rotaMoto.backup',JSON.stringify(snapshot))}catch(e){console.warn('localStorage persist failed',e)}
 }
 async function loadDB(){
@@ -42,14 +43,14 @@ async function saveAll(opts={}){await persistOnly();renderAll();if(opts.recalcRo
 async function buildSyncPacket(){
   const companyId=state.settings?.companyId||state.settings?.global?.companyId||'company_local';
   const deviceId=state.settings?.deviceId||state.settings?.driverId||null;
-  const [deliveries,deliveryEvents,locations,proofs,earnings,tombstones]=await Promise.all([
-    tx('deliveries','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
+  const [deliveryEvents,locations,proofs,earnings,tombstones]=await Promise.all([
     tx('deliveryEvents','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
     tx('locations','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
     tx('proofs','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
     tx('earnings','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
     tx('tombstones','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)}))
   ]);
+  const deliveries=state.races.filter(r=>!r.deleted).map(r=>RotaMotoContract.deliveryFromRace(r,companyId,state.settings.driverId||null));
   const pendingEvents=deliveryEvents.filter(e=>e && !e.acknowledgedAt);
   const packet=RotaMotoContract.packet({companyId,deviceId,app:'RotaMoto',events:[],deliveries,drivers:[],routes:[],locationUpdates:locations,deliveryEvents:pendingEvents,proofs,earnings,tombstones});
   packet.data.races=state.races;
@@ -65,7 +66,8 @@ async function receiveRestaurantPacket(packet={}){
   const check=await validateRestaurantPacket(packet);if(!check.valid)throw new Error(check.errors.join(' '));
   const receipts=await tx('inbox','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)}));
   if(receipts.some(x=>x.packetId===check.packetId))return {duplicate:true,received:0,updated:0,packetId:check.packetId};
-  const incoming=packet.data.deliveries||[];let received=0,updated=0;
+  const incoming=packet.data.deliveries||[];const orders=Array.isArray(packet.data.orders)?packet.data.orders:[];let received=0,updated=0;
+  for(const raw of incoming){if(!raw?.id||raw.companyId&&raw.companyId!==check.companyId)continue;const current=state.races.find(r=>r.deliveryId===raw.id||r.id===raw.id);if(!current||!RotaMotoContract.isNewer({...raw,updatedAt:raw.updatedAt||new Date().toISOString()},current))continue;const status=RotaMotoContract.normalizeDeliveryStatus(raw.status,'restaurante');RotaMotoContract.assertTransition(current.canonicalStatus||RotaMotoContract.normalizeDeliveryStatus(current.status,'motoboy'),status)}
   for(const raw of incoming){
    if(!raw?.id)continue;
    if(raw.companyId&&raw.companyId!==check.companyId)continue;
@@ -73,7 +75,8 @@ async function receiveRestaurantPacket(packet={}){
    const normalizedIncoming={...raw,companyId:raw.companyId||check.companyId,deliveryId:raw.id,updatedAt:raw.updatedAt||new Date().toISOString(),version:Number(raw.version||1)};
    if(current&&!RotaMotoContract.isNewer(normalizedIncoming,current))continue;
    const status=RotaMotoContract.normalizeDeliveryStatus(raw.status,'restaurante');
-   const next={...(current||{}),id:current?.id||raw.id,deliveryId:raw.id,companyId:normalizedIncoming.companyId,orderId:raw.orderId||null,driverId:raw.driverId||null,status:{ASSIGNED:'open',ACCEPTED:'open',PICKED_UP:'route',OUT_FOR_DELIVERY:'route',ARRIVED:'arrived',DELIVERED:'done',CANCELLED:'cancelled',FAILED:'issue',RETURNED:'issue',REDELIVERY:'open',CREATED:'open'}[status]||'open',canonicalStatus:status,version:normalizedIncoming.version,createdAt:current?.createdAt||raw.createdAt||new Date().toISOString(),updatedAt:normalizedIncoming.updatedAt,client:current?.client||raw.customer?.name||raw.customer||'',address:current?.address||raw.address||'',orderNo:current?.orderNo||raw.orderNo||'',value:current?.value??raw.value??0,urgent:current?.urgent??raw.priority==='HIGH'};
+   const order=orders.find(o=>o.id===raw.orderId)||{};
+   const next=RotaMotoContract.raceFromDelivery({...normalizedIncoming,status},order,current||{});
    await tx('races','readwrite',s=>s.put(next));
    await tx('deliveries','readwrite',s=>s.put(normalizedIncoming));
    const idx=state.races.findIndex(r=>r.id===next.id);
@@ -83,9 +86,10 @@ async function receiveRestaurantPacket(packet={}){
   const tombstones=Array.isArray(packet.data.tombstones)?packet.data.tombstones:[];
   for(const tomb of tombstones){
    if(!tomb?.id||tomb.companyId&&tomb.companyId!==check.companyId)continue;
+   if(tomb.store&&tomb.store!=='deliveries')continue;
    const current=state.races.find(r=>r.deliveryId===tomb.id||r.id===tomb.id);
    if(current&&!RotaMotoContract.isNewer(tomb,current))continue;
-   const delivery={...(current||{}),id:current?.deliveryId||tomb.id,deliveryId:tomb.id,companyId:check.companyId,deleted:true,deletedAt:Number(tomb.deletedAt||Date.now()),updatedAt:tomb.updatedAt||new Date().toISOString(),version:Number(tomb.version||0),canonicalStatus:'CANCELLED',status:'cancelled'};
+   const delivery={...(current||{}),id:tomb.id,companyId:check.companyId,deleted:true,deletedAt:tomb.deletedAt||Date.now(),updatedAt:tomb.updatedAt||new Date().toISOString(),version:Number(tomb.version||0),canonicalStatus:'CANCELLED',status:'cancelled'};
    await tx('deliveries','readwrite',s=>s.put(delivery));
    const race={...(current||delivery),id:current?.id||tomb.id,deliveryId:tomb.id,deleted:true,status:'cancelled',canonicalStatus:'CANCELLED',updatedAt:delivery.updatedAt,version:delivery.version};
    await tx('races','readwrite',s=>s.put(race));
@@ -482,7 +486,7 @@ $('#saveRace').onclick=async()=>{if(saveRaceBusy)return;const client=$('#fClient
   if(!lastGps){try{const p=await getPosition();setDriverPosition(p.coords.latitude,p.coords.longitude,p.coords.accuracy)}catch{}}
   const route=optimizedOrder.length?optimizedOrder:routeRaces();if(route.length)await requestRoadDistances(route);
   toast(old?'Corrida atualizada.':'Corrida salva.');resetForm();show('races');renderRaces();saveRaceBusy=false;$('#saveRace').disabled=false};
-$('#cancelForm').onclick=()=>{resetForm();show('home')};$('#deleteRace').onclick=()=>{const id=editingId;modal('Excluir corrida','Essa corrida será removida deste aparelho.',[{label:'Cancelar'},{label:'Excluir',primary:true,onClick:async()=>{state.races=state.races.filter(r=>r.id!==id);await saveAll();resetForm();show('races');toast('Corrida excluída.')}}])};
+$('#cancelForm').onclick=()=>{resetForm();show('home')};$('#deleteRace').onclick=()=>{const id=editingId;modal('Excluir corrida','Essa corrida será removida deste aparelho.',[{label:'Cancelar'},{label:'Excluir',primary:true,onClick:async()=>{const race=state.races.find(r=>r.id===id);if(race){const revised=RotaMotoContract.revise(race);const tomb={id:race.deliveryId||race.id,store:'deliveries',companyId:race.companyId||state.settings.companyId||'company_local',deleted:true,deletedAt:revised.updatedAt,updatedAt:revised.updatedAt,version:revised.version};await tx('tombstones','readwrite',s=>s.put(tomb));}state.races=state.races.filter(r=>r.id!==id);await saveAll();resetForm();show('races');toast('Corrida excluída.')}}])};
 function statusLabel(s){return s==='done'?t('done'):s==='cancelled'?t('cancelled'):s==='route'?t('route'):s==='arrived'?t('arrived'):s==='issue'?t('issue'):t('open')}function statusClass(s){return s==='done'?'done':s==='cancelled'?'cancelled':s==='route'?'route':s==='arrived'?'arrived':s==='issue'?'issue':'open'}
 function arrivalDistanceM(r){if(!r||r.lat==null||r.lng==null||!lastGps)return Infinity;return distance({lat:r.lat,lng:r.lng},lastGps)*1000}
 function isAtDelivery(r){const d=arrivalDistanceM(r);return Number.isFinite(d)&&d<=(state.settings.arrivalRadiusM||10)}
@@ -490,7 +494,7 @@ async function startRace(id){
  const r=state.races.find(x=>x.id===id);
  if(!r)return;
  if(r.status!=='open'){toast('Essa corrida não está disponível para iniciar.','error');return}
- r.status='route';r.canonicalStatus='OUT_FOR_DELIVERY';r.startedAt=new Date().toISOString();r.updatedAt=r.startedAt;await recordDeliveryEvent('DELIVERY_STARTED',r,{startedAt:r.startedAt});
+ r.status='route';r.canonicalStatus='OUT_FOR_DELIVERY';r.startedAt=reviseRace(r);await recordDeliveryEvent('DELIVERY_STARTED',r,{startedAt:r.startedAt});
  r.arrivedAt=null;
  r.gpsDistanceKm=0;
  r.gpsLastPoint=lastGps?{lat:lastGps.lat,lng:lastGps.lng}:null;
@@ -503,7 +507,7 @@ async function markArrived(id){
  if(!r)return;
  if(!['route','arrived'].includes(r.status))return;
  if(!isAtDelivery(r)){toast(t('finalOnlyNear',{m:state.settings.arrivalRadiusM||10}),'error');return}
- r.status='arrived';r.canonicalStatus='ARRIVED';r.arrivedAt=new Date().toISOString();r.updatedAt=r.arrivedAt;await recordDeliveryEvent('DELIVERY_ARRIVED',r,{arrivedAt:r.arrivedAt});
+ r.status='arrived';r.canonicalStatus='ARRIVED';r.arrivedAt=reviseRace(r);await recordDeliveryEvent('DELIVERY_ARRIVED',r,{arrivedAt:r.arrivedAt});
  try{await saveAll();toast('Chegada registrada.')}catch(err){console.error(err);toast('Não foi possível registrar a chegada.','error')}
 }
 function openFinalizeRace(id){
@@ -540,7 +544,7 @@ async function finalizeRace(id,signature){
  const r=state.races.find(x=>x.id===id);
  if(!r||!signature)return;
  if(!isAtDelivery(r)){toast(t('finalOnlyNear',{m:state.settings.arrivalRadiusM||10}),'error');return}
- r.status='done';r.canonicalStatus='DELIVERED';r.completedAt=new Date().toISOString();r.updatedAt=r.completedAt;r.finishedAt=r.completedAt;r.customerSignature=signature;r.customerSignatureAt=r.completedAt;await recordDeliveryEvent('DELIVERY_COMPLETED',r,{completedAt:r.completedAt,hasProof:!!signature});
+ r.status='done';r.canonicalStatus='DELIVERED';r.completedAt=reviseRace(r);r.finishedAt=r.completedAt;r.customerSignature=signature;r.customerSignatureAt=r.completedAt;await recordDeliveryEvent('DELIVERY_COMPLETED',r,{completedAt:r.completedAt,hasProof:!!signature});
  optimizedOrder=optimizedOrder.filter(x=>x.id!==id);syncRouteOrder();
  try{await saveAll({recalcRoute:true});$('#modal').hidden=true;toast('Corrida finalizada e assinatura salva.')}catch(err){console.error(err);r.status='arrived';r.completedAt=null;r.finishedAt=null;r.customerSignature=null;r.customerSignatureAt=null;toast('Não foi possível finalizar a corrida.','error')}
 }
@@ -549,9 +553,9 @@ async function finishRace(id){openFinalizeRace(id)}
 function markIssue(id){
  const r=state.races.find(x=>x.id===id);
  if(!r)return;
- modal(t('problem'),`<p><b>${esc(r.client)}</b></p><p>Registre a ocorrência desta entrega.</p>`,[{label:'Voltar'},{label:'Marcar como problema',primary:true,onClick:async()=>{r.status='issue';r.canonicalStatus='FAILED';r.issueAt=new Date().toISOString();r.updatedAt=r.issueAt;await recordDeliveryEvent('DELIVERY_FAILED',r,{issueAt:r.issueAt});await saveAll();toast('Problema registrado.')}}]);
+ modal(t('problem'),`<p><b>${esc(r.client)}</b></p><p>Registre a ocorrência desta entrega.</p>`,[{label:'Voltar'},{label:'Marcar como problema',primary:true,onClick:async()=>{r.status='issue';r.canonicalStatus='FAILED';r.issueAt=reviseRace(r);await recordDeliveryEvent('DELIVERY_FAILED',r,{issueAt:r.issueAt});await saveAll();toast('Problema registrado.')}}]);
 }
-function cancelRace(id){const r=state.races.find(x=>x.id===id);if(!r)return;const reasons=state.settings.language==='en'?['Customer cancelled','Incorrect address','Customer not found','Delivery could not be completed','Other']:state.settings.language==='es'?['Cliente canceló','Dirección incorrecta','Cliente no localizado','No fue posible realizar la entrega','Otro']:['Cliente cancelou','Endereço incorreto','Cliente não localizado','Não foi possível realizar a entrega','Outro'];modal(t('cancelReason'),`<p><b>${esc(r.client)}</b></p><p>${t('cancelBeforeStart')}</p>`,[{label:'Cancelar'},...reasons.map(reason=>({label:reason,primary:false,onClick:async()=>{r.status='cancelled';r.canonicalStatus='CANCELLED';r.cancelReason=reason;r.cancelledAt=new Date().toISOString();r.updatedAt=r.cancelledAt;optimizedOrder=optimizedOrder.filter(x=>x.id!==id);syncRouteOrder();await recordDeliveryEvent('DELIVERY_CANCELLED',r,{reason});await saveAll({recalcRoute:true});toast('Corrida cancelada e não contabilizada.') }}))])}
+function cancelRace(id){const r=state.races.find(x=>x.id===id);if(!r)return;const reasons=state.settings.language==='en'?['Customer cancelled','Incorrect address','Customer not found','Delivery could not be completed','Other']:state.settings.language==='es'?['Cliente canceló','Dirección incorrecta','Cliente no localizado','No fue posible realizar la entrega','Otro']:['Cliente cancelou','Endereço incorreto','Cliente não localizado','Não foi possível realizar a entrega','Outro'];modal(t('cancelReason'),`<p><b>${esc(r.client)}</b></p><p>${t('cancelBeforeStart')}</p>`,[{label:'Cancelar'},...reasons.map(reason=>({label:reason,primary:false,onClick:async()=>{r.status='cancelled';r.canonicalStatus='CANCELLED';r.cancelReason=reason;r.cancelledAt=reviseRace(r);optimizedOrder=optimizedOrder.filter(x=>x.id!==id);syncRouteOrder();await recordDeliveryEvent('DELIVERY_CANCELLED',r,{reason});await saveAll({recalcRoute:true});toast('Corrida cancelada e não contabilizada.') }}))])}
 function reuseRace(id){const src=state.races.find(r=>r.id===id);if(!src)return;editingId=null;currentCoords=src.lat!=null?{lat:src.lat,lng:src.lng}:null;show('form');$('#formTitle').textContent='Reutilizar corrida';$('#fOrder').value='';$('#fUrgent').checked=!!src.urgent;$('#fClient').value=src.client||'';$('#fPhone').value=src.phone||'';$('#fAddress').value=src.address||'';$('#fNeighborhood').value=src.neighborhood||'';if($('#fCity'))$('#fCity').value=src.city||'';if($('#fState'))$('#fState').value=src.state||'';if($('#fPostalcode'))$('#fPostalcode').value=src.postalcode||'';$('#fValue').value=src.value??'';$('#fDeliveryType').value='normal';$('#fItems').value=itemsToText(src.items||[]);$('#fNotes').value=src.notes||'';$('#deleteRace').hidden=true;setTimeout(()=>{if(currentCoords)setFormMap(currentCoords.lat,currentCoords.lng);},80);updateFormCalc()}
 function startedDetail(r,near){const started=r.status==='route'||r.status==='arrived';if(!started)return '';if(!Number.isFinite(arrivalDistanceM(r)))return `<div class="detailHint">${t('gpsWaiting')}</div>`;return `<div class="detailGps ${near?'near':'far'}"><b>${near?t('gpsNear'):t('gpsFar')}</b><small>${t('finalOnlyNear',{m:state.settings.arrivalRadiusM||10})}</small></div>`}
 function deliveryTypeLabel(type){return type==='return'?'Retorno ao cliente':type==='exchange'?'Troca de pedido':type==='pickup'?'Recolha / devolução':'Entrega normal'}
@@ -624,7 +628,7 @@ $('#themeMode').onchange=async()=>{state.settings.theme=$('#themeMode').value;ap
 async function importBackupFile(f){if(!f)return;try{const x=JSON.parse(await f.text());if(x?.app&&x.app!=='Rota Moto')throw Error();if(!Array.isArray(x.races)||!x.settings)throw Error();state.races=x.races;state.settings=normalizeSettings(x.settings);optimizedOrder=[];applyTheme();await persistOnly();renderAll();toast('Backup completo restaurado: corridas e configurações.')}catch{toast('Backup inválido ou incompatível com o Rota Moto.','error')}}
 $('#exportData').onclick=async()=>{try{const blob=new Blob([JSON.stringify({app:'Rota Moto',version:8,protocolVersion:1,schemaVersion:1,exportedAt:new Date().toISOString(),races:state.races,settings:state.settings},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rota-moto-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);toast('Backup completo exportado.')}catch(e){console.warn(e);toast('Não foi possível exportar o backup.','error')}};window.RotaMotoSync=Object.assign(window.RotaMotoSync||{},{version:1,protocolVersion:1,buildPacket:buildSyncPacket,exportPacket:async()=>{const p=await buildSyncPacket();downloadSyncPacket(p);return p;}});window.RotaMotoSync.receiveRestaurant=receiveRestaurantPacket;window.RotaMotoSync.importRestaurantPacket=stageRestaurantPacket;$('#importRestaurantSync')?.addEventListener('click',()=>$('#restaurantSyncFile')?.click());$('#restaurantSyncFile')?.addEventListener('change',e=>{stageRestaurantPacket(e.target.files?.[0]);e.target.value=''});$('#importData').onclick=()=>$('#importFile').click();$('#importFile').onchange=async e=>{await importBackupFile(e.target.files[0]);e.target.value=''};
 const drop=$('#backupDrop');if(drop){['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('dragover')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('dragover')}));drop.addEventListener('drop',e=>importBackupFile(e.dataTransfer.files[0]))}
-$('#clearData').onclick=()=>modal('Apagar histórico','Isso remove todas as corridas deste aparelho. Os ajustes permanecem.',[{label:'Cancelar'},{label:'Apagar tudo',primary:true,onClick:async()=>{state.races=[];optimizedOrder=[];await saveAll();toast('Histórico apagado.')}}]);
+$('#clearData').onclick=()=>modal('Apagar histórico','Isso remove as corridas, eventos, comprovantes, localizações, ganhos e recibos deste aparelho. Os ajustes e tombstones de sincronização permanecem.',[{label:'Cancelar'},{label:'Apagar tudo',primary:true,onClick:async()=>{const deletedAt=new Date().toISOString();for(const r of state.races){const rev=RotaMotoContract.revise(r);await tx('tombstones','readwrite',s=>s.put({id:r.deliveryId||r.id,store:'deliveries',companyId:r.companyId||state.settings.companyId||'company_local',deleted:true,deletedAt,updatedAt:rev.updatedAt,version:rev.version}))}state.races=[];optimizedOrder=[];for(const store of ['deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])await tx(store,'readwrite',s=>s.clear());await saveAll();toast('Histórico apagado.')}}]);
 function renderAll(){renderHome();renderRaces();renderSettings();if($('#routesScreen').classList.contains('active')){restoreRouteOrder();renderRouteOrder(optimizedOrder);renderRouteGroups();renderRouteInfo(optimizedOrder);evaluateManualOrder();renderRoutePreview(optimizedOrder);setTimeout(()=>{if($('#routesScreen').classList.contains('active')&&optimizedOrder.length)requestRoadDistances(optimizedOrder)},60)}if($('#mapScreen').classList.contains('active')){restoreRouteOrder();renderRouteMap();renderWorkNext()}if($('#earnings').classList.contains('active'))renderEarnings();applyLanguage()}
 async function runDiagnostics(){const el=$('#diagnosticStatus');if(el)el.innerHTML='<span class="diagItem warn">Verificando GPS…</span>';const gpsCheck=await (async()=>{try{const p=await getPosition();setDriverPosition(p.coords.latitude,p.coords.longitude,p.coords.accuracy);return true}catch(e){return false}})();const checks=[['Armazenamento local',!!dbReady],['GPS',gpsCheck],['Corridas salvas',Array.isArray(state.races)],['Configurações',!!state.settings],['Modo offline',navigator.onLine||'Sem internet — dados locais disponíveis']];const ok=checks.every(x=>x[1]===true||x[1]===undefined||typeof x[1]==='string');if(el)el.innerHTML=checks.map(x=>`<span class="diagItem ${x[1]===true?'ok':'warn'}">${x[0]}: ${x[1]===true?'OK':typeof x[1]==='string'?x[1]:'aguardando'}</span>`).join('');toast(ok?'Verificação concluída.':'Verificação concluída com itens para revisar.',ok?'ok':'error')}$('#diagnosticBtn')?.addEventListener('click',runDiagnostics);const systemThemeMedia=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;if(systemThemeMedia){const onSystemThemeChange=()=>{if((state.settings||defaults).theme==='auto')applyTheme()};systemThemeMedia.addEventListener?.('change',onSystemThemeChange);systemThemeMedia.addListener?.(onSystemThemeChange)}
 
