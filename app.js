@@ -39,18 +39,25 @@ function openDB(){
  return opening;
 }
 async function tx(store,mode,fn){const d=await openDB();return new Promise((res,rej)=>{let t,out;try{t=d.transaction(store,mode);out=fn(Array.isArray(store)?t:t.objectStore(store),t)}catch(e){try{t?.abort()}catch(_){}rej(e);return}t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error||new Error('Falha no banco local'));t.onabort=()=>rej(t.error||new Error('Transação local abortada'))})}
-async function persistOnly({deliveryEvent}={}){
-  const snapshot={races:state.races,settings:state.settings};
+async function persistOnly({deliveryEvent,snapshot={races:state.races,settings:state.settings}}={}){
   const stores=['races','deliveries','meta',...(deliveryEvent?['deliveryEvents','outbox']:[])];
   await tx(stores,'readwrite',(t)=>{
     const races=t.objectStore('races'),deliveries=t.objectStore('deliveries');
     races.clear();deliveries.clear();
-    state.races.forEach(r=>races.put(r));
-    state.races.filter(r=>!r.deleted).forEach(r=>deliveries.put(RotaMotoContract.deliveryFromRace(r,state.settings.companyId||'company_local',state.settings.driverId||null)));
-    t.objectStore('meta').put({key:'settings',value:state.settings});
+    snapshot.races.forEach(r=>races.put(r));
+    snapshot.races.filter(r=>!r.deleted).forEach(r=>deliveries.put(RotaMotoContract.deliveryFromRace(r,snapshot.settings.companyId||'company_local',snapshot.settings.driverId||null)));
+    t.objectStore('meta').put({key:'settings',value:snapshot.settings});
     if(deliveryEvent){t.objectStore('deliveryEvents').put(deliveryEvent);t.objectStore('outbox').put({...deliveryEvent,id:deliveryEvent.eventId,status:'pending'})}
   });
   try{localStorage.setItem('rotaMoto.backup',JSON.stringify(snapshot))}catch(e){console.warn('localStorage backup failed',e)}
+}
+let riderCommandQueue=Promise.resolve();
+function commitRiderCommand(prepare){
+ const run=async()=>{const next={races:structuredClone(state.races),settings:structuredClone(state.settings)};const prepared=prepare(next)||{},deliveryEvent=prepared.deliveryEvent;await persistOnly({deliveryEvent,snapshot:next});state.races=next.races;state.settings=next.settings;renderAll();return prepared.result};
+ const pending=riderCommandQueue.then(run,run);riderCommandQueue=pending.catch(()=>{});return pending;
+}
+function commitRaceCommand(id,mutate,eventType,eventPayload={}){
+ return commitRiderCommand(next=>{const race=next.races.find(item=>item.id===id);if(!race)return{};mutate(race,next);const deliveryEvent=eventType?recordDeliveryEvent(eventType,race,eventPayload):null;if(next.settings.routeOrderIds)next.settings.routeOrderIds=next.settings.routeOrderIds.filter(raceId=>raceId!==id||!['done','cancelled'].includes(race.status));return{deliveryEvent,result:race}});
 }
 async function loadDB(){
   try{
@@ -143,7 +150,7 @@ function distancePendingText(r,first=false){if(r?.distanceKm!=null)return `${r.d
 
 function syncRouteOrder(){state.settings.routeOrderIds=optimizedOrder.map(r=>r.id)}
 function restoreRouteOrder(){const ids=state.settings.routeOrderIds||[], by=new Map(routeRaces().map(r=>[r.id,r])), out=ids.map(id=>by.get(id)).filter(Boolean);routeRaces().forEach(r=>{if(!out.some(x=>x.id===r.id))out.push(r)});optimizedOrder=out;selectedRouteIndex=Math.min(selectedRouteIndex,Math.max(0,out.length-1));return out}
-async function recalcAllFees(){state.races.forEach(r=>{if(r.distanceKm!=null)r.deliveryFee=calcFeeForRace(r)});await persistOnly();renderAll()}
+async function recalcAllFees(){return commitRiderCommand(next=>{next.races.forEach(r=>{if(r.distanceKm!=null)r.deliveryFee=calcFeeForRace(r)});return{result:next.races}})}
 async function refreshActiveRoute(){
   const rs=routeRaces();
   if(!rs.length){optimizedOrder=[];state.settings.routeOrderIds=[];await persistOnly();renderAll();return {ok:false,reason:'empty'}}
@@ -511,14 +518,11 @@ function resetForm(){editingId=null;window._ocrItems=null;currentCoords=null;if(
 function openForm(id=null){editingId=id;const r=state.races.find(x=>x.id===id);show('form');$('#formTitle').textContent=r?'Editar corrida':'Nova corrida';$('#fOrder').value=r?.orderNo||'';$('#fUrgent').checked=!!r?.urgent;$('#fClient').value=r?.client||'';$('#fPhone').value=r?.phone||'';$('#fAddress').value=r?.address||'';$('#fNeighborhood').value=r?.neighborhood||'';if($('#fCity'))$('#fCity').value=r?.city||'';if($('#fState'))$('#fState').value=r?.state||'';if($('#fPostalcode'))$('#fPostalcode').value=r?.postalcode||'';$('#fValue').value=r?.value??'';$('#fDeliveryType').value=r?.deliveryType||'normal';$('#fItems').value=itemsToText(r?.items||[]);$('#fNotes').value=r?.notes||'';$('#deleteRace').hidden=!r;currentCoords=r?.lat!=null?{lat:r.lat,lng:r.lng}:null;setTimeout(()=>{if(r?.lat!=null)setFormMap(r.lat,r.lng);else if(formMap)formMap.invalidateSize()},80);updateFormCalc()}
 $('#searchAddressBtn').onclick=searchAddress;$('#verifyGoogleBtn').onclick=()=>{const q=$('#fAddress').value.trim();if(!q){toast('Digite um endereço primeiro.','error');return}window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q),'_blank');};$('#useGpsBtn').onclick=useGPS;$('#fAddress').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();searchAddress()}};$('#fValue').oninput=updateFormCalc;
 function updateFormCalc(){const r=editingId&&state.races.find(x=>x.id===editingId),km=r?.distanceKm;$('#formCalc').textContent=km!=null?brl(calcFee(km)):'—';$('#calcExplain').textContent=km!=null?`Distância pelas ruas: ${km.toFixed(1)} km.`:'Distância pendente — aguardando GPS e cálculo pelas ruas. A corrida será salva uma única vez e atualizada depois.'}
-$('#saveRace').onclick=async()=>{if(saveRaceBusy)return;const client=$('#fClient').value.trim(),address=$('#fAddress').value.trim();if(!client||!address){toast('Preencha cliente e endereço.','error');return}if(!currentCoords){toast('Confirme a localização no mapa antes de salvar.','error');return}saveRaceBusy=true;$('#saveRace').disabled=true;const old=editingId&&state.races.find(r=>r.id===editingId);const id=old?.id||uuid();const r={...(old||{}),id,orderNo:$('#fOrder').value.trim(),client,phone:$('#fPhone').value.trim(),address,neighborhood:$('#fNeighborhood').value.trim(),city:$('#fCity')?.value.trim()||'',state:$('#fState')?.value.trim()||'',postalcode:$('#fPostalcode')?.value.trim()||'',value:num($('#fValue').value),deliveryType:$('#fDeliveryType')?.value||'normal',linkedRaceId:window._followupSourceId||null,notes:$('#fNotes').value.trim(),items:parseItemsText($('#fItems').value),urgent:$('#fUrgent').checked,lat:currentCoords.lat,lng:currentCoords.lng,status:old?.status||'open',createdAt:old?.createdAt||new Date().toISOString()};
-  if(old && (old.lat!==r.lat||old.lng!==r.lng)) r.distanceKm=null,r.deliveryFee=null;
-  if(!old) r.distanceKm=null,r.deliveryFee=null;
-  if(old)Object.assign(old,r);else if(!state.races.some(x=>x.id===id))state.races.push(r);window._followupSourceId=null;
-  if(!optimizedOrder.length)restoreRouteOrder();if(!optimizedOrder.some(x=>x.id===r.id))optimizedOrder.push(r);syncRouteOrder();await persistOnly();renderAll();
+$('#saveRace').onclick=async()=>{if(saveRaceBusy)return;const client=$('#fClient').value.trim(),address=$('#fAddress').value.trim();if(!client||!address){toast('Preencha cliente e endereço.','error');return}if(!currentCoords){toast('Confirme a localização no mapa antes de salvar.','error');return}saveRaceBusy=true;$('#saveRace').disabled=true;const editId=editingId,id=editId||uuid(),coords={...currentCoords},data={orderNo:$('#fOrder').value.trim(),client,phone:$('#fPhone').value.trim(),address,neighborhood:$('#fNeighborhood').value.trim(),city:$('#fCity')?.value.trim()||'',state:$('#fState')?.value.trim()||'',postalcode:$('#fPostalcode')?.value.trim()||'',value:num($('#fValue').value),deliveryType:$('#fDeliveryType')?.value||'normal',linkedRaceId:window._followupSourceId||null,notes:$('#fNotes').value.trim(),items:parseItemsText($('#fItems').value),urgent:$('#fUrgent').checked,lat:coords.lat,lng:coords.lng};
+  try{const {race,created}=await commitRiderCommand(next=>{const index=next.races.findIndex(item=>item.id===editId),old=index>=0?next.races[index]:null,r={...(old||{}),...data,id,linkedRaceId:data.linkedRaceId,status:old?.status||'open',createdAt:old?.createdAt||new Date().toISOString()};if(!old||old.lat!==r.lat||old.lng!==r.lng)r.distanceKm=null,r.deliveryFee=null;if(old)next.races[index]=r;else next.races.push(r);next.settings.routeOrderIds=[...(next.settings.routeOrderIds||[]).filter(x=>x!==id),id];return{result:{race:r,created:!old}}});window._followupSourceId=null;
   if(!lastGps){try{const p=await getPosition();setDriverPosition(p.coords.latitude,p.coords.longitude,p.coords.accuracy)}catch{}}
   const route=optimizedOrder.length?optimizedOrder:routeRaces();if(route.length)await requestRoadDistances(route);
-  toast(old?'Corrida atualizada.':'Corrida salva.');resetForm();show('races');renderRaces();saveRaceBusy=false;$('#saveRace').disabled=false};
+  toast(created?'Corrida salva.':'Corrida atualizada.');resetForm();show('races');renderRaces();}catch(error){console.error(error);toast('Não foi possível salvar a corrida.','error')}finally{saveRaceBusy=false;$('#saveRace').disabled=false}};
 $('#cancelForm').onclick=()=>{resetForm();show('home')};$('#deleteRace').onclick=()=>{const id=editingId;modal('Excluir corrida','Essa corrida será removida deste aparelho.',[{label:'Cancelar'},{label:'Excluir',primary:true,onClick:async()=>{const race=state.races.find(r=>r.id===id);if(race){const revised=RotaMotoContract.revise(race);const tomb={id:race.deliveryId||race.id,store:'deliveries',companyId:race.companyId||state.settings.companyId||'company_local',deleted:true,deletedAt:revised.updatedAt,updatedAt:revised.updatedAt,version:revised.version};await tx('tombstones','readwrite',s=>s.put(tomb));}state.races=state.races.filter(r=>r.id!==id);await saveAll();resetForm();show('races');toast('Corrida excluída.')}}])};
 function statusLabel(s){return s==='done'?t('done'):s==='cancelled'?t('cancelled'):s==='route'?t('route'):s==='arrived'?t('arrived'):s==='issue'?t('issue'):t('open')}function statusClass(s){return s==='done'?'done':s==='cancelled'?'cancelled':s==='route'?'route':s==='arrived'?'arrived':s==='issue'?'issue':'open'}
 function arrivalDistanceM(r){if(!r||r.lat==null||r.lng==null||!lastGps)return Infinity;return distance({lat:r.lat,lng:r.lng},lastGps)*1000}
@@ -527,21 +531,14 @@ async function startRace(id){
  const r=state.races.find(x=>x.id===id);
  if(!r)return;
  if(r.status!=='open'){toast('Essa corrida não está disponível para iniciar.','error');return}
- const previous=structuredClone(r);r.status='route';r.canonicalStatus='OUT_FOR_DELIVERY';r.startedAt=reviseRace(r);
- r.arrivedAt=null;
- r.gpsDistanceKm=0;
- r.gpsLastPoint=lastGps?{lat:lastGps.lat,lng:lastGps.lng}:null;
- r.distanceSource='gps';
- r.finishedAt=null;
- try{const deliveryEvent=recordDeliveryEvent('DELIVERY_STARTED',r,{startedAt:r.startedAt});await saveAll({recalcRoute:true,deliveryEvent});toast('Corrida iniciada.')}catch(err){restoreRace(r,previous);toast('Não foi possível iniciar a corrida.','error');console.error(err)}
+ try{await commitRaceCommand(id,race=>{race.status='route';race.canonicalStatus='OUT_FOR_DELIVERY';race.startedAt=reviseRace(race);race.arrivedAt=null;race.gpsDistanceKm=0;race.gpsLastPoint=lastGps?{lat:lastGps.lat,lng:lastGps.lng}:null;race.distanceSource='gps';race.finishedAt=null},'DELIVERY_STARTED');await refreshActiveRoute();toast('Corrida iniciada.')}catch(err){toast('Não foi possível iniciar a corrida.','error');console.error(err)}
 }
 async function markArrived(id){
  const r=state.races.find(x=>x.id===id);
  if(!r)return;
  if(!['route','arrived'].includes(r.status))return;
  if(!isAtDelivery(r)){toast(t('finalOnlyNear',{m:state.settings.arrivalRadiusM||10}),'error');return}
- const previous=structuredClone(r);r.status='arrived';r.canonicalStatus='ARRIVED';r.arrivedAt=reviseRace(r);
- try{const deliveryEvent=recordDeliveryEvent('DELIVERY_ARRIVED',r,{arrivedAt:r.arrivedAt});await saveAll({deliveryEvent});toast('Chegada registrada.')}catch(err){restoreRace(r,previous);console.error(err);toast('Não foi possível registrar a chegada.','error')}
+ try{await commitRaceCommand(id,race=>{race.status='arrived';race.canonicalStatus='ARRIVED';race.arrivedAt=reviseRace(race)},'DELIVERY_ARRIVED');toast('Chegada registrada.')}catch(err){console.error(err);toast('Não foi possível registrar a chegada.','error')}
 }
 function openFinalizeRace(id){
  const r=state.races.find(x=>x.id===id);
@@ -577,18 +574,16 @@ async function finalizeRace(id,signature){
  const r=state.races.find(x=>x.id===id);
  if(!r||!signature)return;
  if(!isAtDelivery(r)){toast(t('finalOnlyNear',{m:state.settings.arrivalRadiusM||10}),'error');return}
- const previous=structuredClone(r);r.status='done';r.canonicalStatus='DELIVERED';r.completedAt=reviseRace(r);r.finishedAt=r.completedAt;r.customerSignature=signature;r.customerSignatureAt=r.completedAt;
- optimizedOrder=optimizedOrder.filter(x=>x.id!==id);syncRouteOrder();
- try{const deliveryEvent=recordDeliveryEvent('DELIVERY_COMPLETED',r,{completedAt:r.completedAt,hasProof:!!signature});await saveAll({recalcRoute:true,deliveryEvent});$('#modal').hidden=true;toast('Corrida finalizada e assinatura salva.')}catch(err){restoreRace(r,previous);console.error(err);toast('Não foi possível finalizar a corrida.','error')}
+ try{await commitRaceCommand(id,race=>{race.status='done';race.canonicalStatus='DELIVERED';race.completedAt=reviseRace(race);race.finishedAt=race.completedAt;race.customerSignature=signature;race.customerSignatureAt=race.completedAt},'DELIVERY_COMPLETED',{hasProof:!!signature});optimizedOrder=optimizedOrder.filter(x=>x.id!==id);await refreshActiveRoute();$('#modal').hidden=true;toast('Corrida finalizada e assinatura salva.')}catch(err){console.error(err);toast('Não foi possível finalizar a corrida.','error')}
 }
 async function finishRace(id){openFinalizeRace(id)}
 
 function markIssue(id){
  const r=state.races.find(x=>x.id===id);
  if(!r)return;
- modal(t('problem'),`<p><b>${esc(r.client)}</b></p><p>Registre a ocorrência desta entrega.</p>`,[{label:'Voltar'},{label:'Marcar como problema',primary:true,onClick:async()=>{const previous=structuredClone(r);r.status='issue';r.canonicalStatus='FAILED';r.issueAt=reviseRace(r);try{const deliveryEvent=recordDeliveryEvent('DELIVERY_FAILED',r,{issueAt:r.issueAt});await saveAll({deliveryEvent});toast('Problema registrado.')}catch(err){restoreRace(r,previous);console.error(err);toast('Não foi possível registrar o problema.','error')}}}]);
+ modal(t('problem'),`<p><b>${esc(r.client)}</b></p><p>Registre a ocorrência desta entrega.</p>`,[{label:'Voltar'},{label:'Marcar como problema',primary:true,onClick:async()=>{try{await commitRaceCommand(id,race=>{race.status='issue';race.canonicalStatus='FAILED';race.issueAt=reviseRace(race)},'DELIVERY_FAILED');toast('Problema registrado.')}catch(err){console.error(err);toast('Não foi possível registrar o problema.','error')}}}]);
 }
-function cancelRace(id){const r=state.races.find(x=>x.id===id);if(!r)return;const reasons=state.settings.language==='en'?['Customer cancelled','Incorrect address','Customer not found','Delivery could not be completed','Other']:state.settings.language==='es'?['Cliente canceló','Dirección incorrecta','Cliente no localizado','No fue posible realizar la entrega','Otro']:['Cliente cancelou','Endereço incorreto','Cliente não localizado','Não foi possível realizar a entrega','Outro'];modal(t('cancelReason'),`<p><b>${esc(r.client)}</b></p><p>${t('cancelBeforeStart')}</p>`,[{label:'Cancelar'},...reasons.map(reason=>({label:reason,primary:false,onClick:async()=>{const previous=structuredClone(r);r.status='cancelled';r.canonicalStatus='CANCELLED';r.cancelReason=reason;r.cancelledAt=reviseRace(r);try{const deliveryEvent=recordDeliveryEvent('DELIVERY_CANCELLED',r,{reason});optimizedOrder=optimizedOrder.filter(x=>x.id!==id);syncRouteOrder();await saveAll({recalcRoute:true,deliveryEvent});toast('Corrida cancelada e não contabilizada.')}catch(err){restoreRace(r,previous);console.error(err);toast('Não foi possível cancelar a corrida.','error')} }}))])}
+function cancelRace(id){const r=state.races.find(x=>x.id===id);if(!r)return;const reasons=state.settings.language==='en'?['Customer cancelled','Incorrect address','Customer not found','Delivery could not be completed','Other']:state.settings.language==='es'?['Cliente canceló','Dirección incorrecta','Cliente no localizado','No fue posible realizar la entrega','Otro']:['Cliente cancelou','Endereço incorreto','Cliente não localizado','Não foi possível realizar a entrega','Outro'];modal(t('cancelReason'),`<p><b>${esc(r.client)}</b></p><p>${t('cancelBeforeStart')}</p>`,[{label:'Cancelar'},...reasons.map(reason=>({label:reason,primary:false,onClick:async()=>{try{await commitRaceCommand(id,race=>{race.status='cancelled';race.canonicalStatus='CANCELLED';race.cancelReason=reason;race.cancelledAt=reviseRace(race)},'DELIVERY_CANCELLED',{reason});optimizedOrder=optimizedOrder.filter(x=>x.id!==id);toast('Corrida cancelada e não contabilizada.')}catch(err){console.error(err);toast('Não foi possível cancelar a corrida.','error')}}}))])}
 function reuseRace(id){const src=state.races.find(r=>r.id===id);if(!src)return;editingId=null;currentCoords=src.lat!=null?{lat:src.lat,lng:src.lng}:null;show('form');$('#formTitle').textContent='Reutilizar corrida';$('#fOrder').value='';$('#fUrgent').checked=!!src.urgent;$('#fClient').value=src.client||'';$('#fPhone').value=src.phone||'';$('#fAddress').value=src.address||'';$('#fNeighborhood').value=src.neighborhood||'';if($('#fCity'))$('#fCity').value=src.city||'';if($('#fState'))$('#fState').value=src.state||'';if($('#fPostalcode'))$('#fPostalcode').value=src.postalcode||'';$('#fValue').value=src.value??'';$('#fDeliveryType').value='normal';$('#fItems').value=itemsToText(src.items||[]);$('#fNotes').value=src.notes||'';$('#deleteRace').hidden=true;setTimeout(()=>{if(currentCoords)setFormMap(currentCoords.lat,currentCoords.lng);},80);updateFormCalc()}
 function startedDetail(r,near){const started=r.status==='route'||r.status==='arrived';if(!started)return '';if(!Number.isFinite(arrivalDistanceM(r)))return `<div class="detailHint">${t('gpsWaiting')}</div>`;return `<div class="detailGps ${near?'near':'far'}"><b>${near?t('gpsNear'):t('gpsFar')}</b><small>${t('finalOnlyNear',{m:state.settings.arrivalRadiusM||10})}</small></div>`}
 function deliveryTypeLabel(type){return type==='return'?'Retorno ao cliente':type==='exchange'?'Troca de pedido':type==='pickup'?'Recolha / devolução':'Entrega normal'}
