@@ -86,39 +86,50 @@ async function validateRestaurantPacket(packet={}){const p=packet?.data||{};cons
 async function receiveRestaurantPacket(packet={}){
  try{
   const check=await validateRestaurantPacket(packet);if(!check.valid)throw new Error(check.errors.join(' '));
-  const receipts=await tx('inbox','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)}));
-  if(receipts.some(x=>x.packetId===check.packetId))return {duplicate:true,received:0,updated:0,packetId:check.packetId};
   const incoming=packet.data.deliveries||[];const orders=Array.isArray(packet.data.orders)?packet.data.orders:[];let received=0,updated=0;
-  for(const raw of incoming){if(!raw?.id||raw.companyId&&raw.companyId!==check.companyId)continue;const current=state.races.find(r=>r.deliveryId===raw.id||r.id===raw.id);if(!current||!RotaMotoContract.isNewer({...raw,updatedAt:raw.updatedAt||new Date().toISOString()},current))continue;const status=RotaMotoContract.normalizeDeliveryStatus(raw.status,'restaurante');RotaMotoContract.assertTransition(current.canonicalStatus||RotaMotoContract.normalizeDeliveryStatus(current.status,'motoboy'),status)}
+  const nextRaces=state.races.map(r=>({...r})),changedRaceIds=new Set();
+  for(const raw of incoming){if(!raw?.id||raw.companyId&&raw.companyId!==check.companyId)continue;const current=nextRaces.find(r=>r.deliveryId===raw.id||r.id===raw.id);if(!current||!RotaMotoContract.isNewer({...raw,updatedAt:raw.updatedAt||new Date().toISOString()},current))continue;const status=RotaMotoContract.normalizeDeliveryStatus(raw.status,'restaurante');RotaMotoContract.assertTransition(current.canonicalStatus||RotaMotoContract.normalizeDeliveryStatus(current.status,'motoboy'),status)}
   for(const raw of incoming){
    if(!raw?.id)continue;
    if(raw.companyId&&raw.companyId!==check.companyId)continue;
-   const current=state.races.find(r=>r.deliveryId===raw.id||r.id===raw.id);
+   const current=nextRaces.find(r=>r.deliveryId===raw.id||r.id===raw.id);
    const normalizedIncoming={...raw,companyId:raw.companyId||check.companyId,deliveryId:raw.id,updatedAt:raw.updatedAt||new Date().toISOString(),version:Number(raw.version||1)};
    if(current&&!RotaMotoContract.isNewer(normalizedIncoming,current))continue;
    const status=RotaMotoContract.normalizeDeliveryStatus(raw.status,'restaurante');
    const order=orders.find(o=>o.id===raw.orderId)||{};
    const next=RotaMotoContract.raceFromDelivery({...normalizedIncoming,status},order,current||{});
-   await tx('races','readwrite',s=>s.put(next));
-   await tx('deliveries','readwrite',s=>s.put(normalizedIncoming));
-   const idx=state.races.findIndex(r=>r.id===next.id);
-   if(idx>=0)state.races[idx]=next;else state.races.push(next);
+   const idx=nextRaces.findIndex(r=>r.id===next.id);
+   if(idx>=0)nextRaces[idx]=next;else nextRaces.push(next);
+   changedRaceIds.add(next.id);
    received += current?0:1; updated += current?1:0;
   }
   const tombstones=Array.isArray(packet.data.tombstones)?packet.data.tombstones:[];
   for(const tomb of tombstones){
    if(!tomb?.id||tomb.companyId&&tomb.companyId!==check.companyId)continue;
    if(tomb.store&&tomb.store!=='deliveries')continue;
-   const current=state.races.find(r=>r.deliveryId===tomb.id||r.id===tomb.id);
+   const current=nextRaces.find(r=>r.deliveryId===tomb.id||r.id===tomb.id);
    if(current&&!RotaMotoContract.isNewer(tomb,current))continue;
    const delivery={...(current||{}),id:tomb.id,companyId:check.companyId,deleted:true,deletedAt:tomb.deletedAt||Date.now(),updatedAt:tomb.updatedAt||new Date().toISOString(),version:Number(tomb.version||0),canonicalStatus:'CANCELLED',status:'cancelled'};
-   await tx('deliveries','readwrite',s=>s.put(delivery));
    const race={...(current||delivery),id:current?.id||tomb.id,deliveryId:tomb.id,deleted:true,status:'cancelled',canonicalStatus:'CANCELLED',updatedAt:delivery.updatedAt,version:delivery.version};
-   await tx('races','readwrite',s=>s.put(race));
-   const idx=state.races.findIndex(r=>r.id===race.id);if(idx>=0)state.races[idx]=race;else state.races.push(race);
+   const idx=nextRaces.findIndex(r=>r.id===race.id);if(idx>=0)nextRaces[idx]=race;else nextRaces.push(race);
+   changedRaceIds.add(race.id);
   }
-  await tx('inbox','readwrite',s=>s.put({id:check.packetId,packetId:check.packetId,receivedAt:Date.now(),sourceDeviceId:packet.deviceId||null,status:'processed'}));
-  await persistOnly();renderAll();toast(`Recebidas ${received} nova(s) e ${updated} atualizada(s).`,'success');return {duplicate:false,received,updated,packetId:check.packetId};
+  const outcome={duplicate:false,received,updated,packetId:check.packetId};
+  await tx(['races','deliveries','inbox'],'readwrite',t=>{
+   const receipt=t.objectStore('inbox').get(check.packetId);
+   receipt.onsuccess=()=>{
+    const current=receipt.result;
+    if(current?.packetId===check.packetId){outcome.duplicate=true;outcome.received=0;outcome.updated=0;return}
+    const races=t.objectStore('races'),deliveries=t.objectStore('deliveries');
+    for(const race of nextRaces){if(!changedRaceIds.has(race.id))continue;races.put(race);deliveries.put({...RotaMotoContract.deliveryFromRace(race,state.settings.companyId||check.companyId,state.settings.driverId||null),deleted:!!race.deleted})}
+    t.objectStore('inbox').put({id:check.packetId,packetId:check.packetId,receivedAt:Date.now(),sourceDeviceId:packet.deviceId||null,status:'processed'});
+   };
+   receipt.onerror=()=>{throw receipt.error||new Error('Não foi possível verificar o recibo do pacote.')};
+   return outcome;
+  });
+  if(outcome.duplicate)return outcome;
+  state.races=nextRaces;try{localStorage.setItem('rotaMoto.backup',JSON.stringify({races:state.races,settings:state.settings}))}catch(e){console.warn('localStorage backup failed',e)}
+  renderAll();toast(`Recebidas ${received} nova(s) e ${updated} atualizada(s).`,'success');return outcome;
  }catch(e){console.warn('Falha ao receber pacote do Restaurante',e);throw new Error(e.message||'Não foi possível receber o pacote do Restaurante.');}
 }
 async function stageRestaurantPacket(file){if(!file)return;try{const packet=JSON.parse(await file.text());const check=await validateRestaurantPacket(packet);if(!check.valid)throw new Error(check.errors.join(' '));const ok=confirm(`Pacote do Restaurante\\n\\n${packet.data.deliveries.length} entrega(s)\\nPacote: ${check.packetId}\\n\\nImportar agora?`);if(ok)await receiveRestaurantPacket(packet)}catch(e){toast(e.message||'Pacote inválido.','error')}}
