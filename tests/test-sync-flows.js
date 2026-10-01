@@ -26,6 +26,10 @@ const packet=C.packet({companyId:'c1',app:'RotaMoto',deliveries:[],tombstones:[t
 assert.equal(packet.data.tombstones[0].id,'del-1');assert.equal(packet.data.tombstones[0].deleted,true);
 const motoSource=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
 assert(motoSource.includes("for(const store of ['deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
+// Execution facts and their outbound queue entry must commit or abort together.
+assert(motoSource.includes("const stores=['races','deliveries','meta',...(deliveryEvent?['deliveryEvents','outbox']:[])]"));
+assert(motoSource.includes("t.objectStore('deliveryEvents').put(deliveryEvent);t.objectStore('outbox').put({...deliveryEvent,id:deliveryEvent.eventId,status:'pending'})"));
+assert(motoSource.includes('await persistOnly(opts)'));
 assert(motoSource.includes("tx('tombstones','readwrite'"));
 assert(motoSource.includes('const deliveries=state.races.filter(r=>!r.deleted).map'));
 
