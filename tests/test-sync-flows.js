@@ -25,12 +25,17 @@ const tomb=C.tombstone(started,'deliveries','2026-09-30T12:02:00.000Z');
 const packet=C.packet({companyId:'c1',app:'RotaMoto',deliveries:[],tombstones:[tomb]});
 assert.equal(packet.data.tombstones[0].id,'del-1');assert.equal(packet.data.tombstones[0].deleted,true);
 const motoSource=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
+const motoHtml=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+const motoWorker=fs.readFileSync(path.join(__dirname,'..','service-worker.js'),'utf8');
+assert(motoHtml.includes('<script src="contract.js?v=1"></script><script src="app.js?v=39.6"></script>'),'browser must load contract before its app consumer');
+assert(motoWorker.includes("'./contract.js?v=1'"),'contract must be available from offline precache');
 assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
 // Execution facts and their outbound queue entry must commit or abort together.
-assert(motoSource.includes("const stores=['races','deliveries','meta',...(deliveryEvent?['deliveryEvents','outbox']:[])]"));
-assert(motoSource.includes("t.objectStore('deliveryEvents').put(deliveryEvent);t.objectStore('outbox').put({...deliveryEvent,id:deliveryEvent.eventId,status:'pending'})"));
+assert(motoSource.includes("const stores=['races','deliveries','meta',...(deliveryEvent?['deliveryEvents','outbox']:[]),...(tombstones.length?['tombstones']:[])]"));
+assert(motoSource.includes('for(const tombstone of tombstones)t.objectStore(\'tombstones\').put(tombstone)'));
+assert(motoSource.includes("const storedEvent={...deliveryEvent,id:deliveryEvent.eventId};t.objectStore('deliveryEvents').put(storedEvent);t.objectStore('outbox').put({...storedEvent,status:'pending'})"));
 assert(motoSource.includes('await persistOnly(opts)'));
-assert(motoSource.includes("tx('tombstones','readwrite'"));
+assert(motoSource.includes("function deleteRiderRace(id)"));
 assert(motoSource.includes('const deliveries=state.races.filter(r=>!r.deleted).map'));
 // History deletion must commit tombstones and all cleared projections together.
 const historyDeleteStart=motoSource.indexOf("$('#clearData').onclick=");
