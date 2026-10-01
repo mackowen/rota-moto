@@ -25,13 +25,20 @@ const tomb=C.tombstone(started,'deliveries','2026-09-30T12:02:00.000Z');
 const packet=C.packet({companyId:'c1',app:'RotaMoto',deliveries:[],tombstones:[tomb]});
 assert.equal(packet.data.tombstones[0].id,'del-1');assert.equal(packet.data.tombstones[0].deleted,true);
 const motoSource=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
-assert(motoSource.includes("for(const store of ['deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
+assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
 // Execution facts and their outbound queue entry must commit or abort together.
 assert(motoSource.includes("const stores=['races','deliveries','meta',...(deliveryEvent?['deliveryEvents','outbox']:[])]"));
 assert(motoSource.includes("t.objectStore('deliveryEvents').put(deliveryEvent);t.objectStore('outbox').put({...deliveryEvent,id:deliveryEvent.eventId,status:'pending'})"));
 assert(motoSource.includes('await persistOnly(opts)'));
 assert(motoSource.includes("tx('tombstones','readwrite'"));
 assert(motoSource.includes('const deliveries=state.races.filter(r=>!r.deleted).map'));
+// History deletion must commit tombstones and all cleared projections together.
+const historyDeleteStart=motoSource.indexOf("$('#clearData').onclick=");
+const historyDelete=motoSource.slice(historyDeleteStart,historyDeleteStart+1800);
+assert(historyDelete.includes("tx(['races','deliveries','tombstones','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'],'readwrite'"));
+assert(historyDelete.indexOf('await tx(')<historyDelete.indexOf('state.races=[]'),'in-memory state changes only after transaction completion');
+assert(historyDelete.includes("toast('Não foi possível apagar o histórico. Nenhuma alteração foi confirmada.','error')"));
+assert(!historyDelete.includes("tx('tombstones','readwrite'"),'history tombstones are not persisted separately');
 // Failed opens must be retryable; a schema upgrade from another tab must release this connection.
 assert(motoSource.includes(".catch(error=>{if(dbReady===opening)dbReady=null;throw error})"));
 assert(motoSource.includes('request.onblocked=()=>fail(new Error('));
