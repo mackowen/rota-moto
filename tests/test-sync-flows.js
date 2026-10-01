@@ -32,6 +32,11 @@ assert(motoSource.includes("t.objectStore('deliveryEvents').put(deliveryEvent);t
 assert(motoSource.includes('await persistOnly(opts)'));
 assert(motoSource.includes("tx('tombstones','readwrite'"));
 assert(motoSource.includes('const deliveries=state.races.filter(r=>!r.deleted).map'));
+// Failed opens must be retryable; a schema upgrade from another tab must release this connection.
+assert(motoSource.includes(".catch(error=>{if(dbReady===opening)dbReady=null;throw error})"));
+assert(motoSource.includes('request.onblocked=()=>fail(new Error('));
+assert(motoSource.includes('connection.onversionchange=()=>{connection.close();if(dbReady===opening)dbReady=null}'));
+assert(motoSource.includes('if(settled){connection.close();return}'));
 
 // f) Impossible transitions are rejected, never persisted as a newer revision.
 assert.throws(()=>C.assertTransition('DELIVERED','OUT_FOR_DELIVERY'));
