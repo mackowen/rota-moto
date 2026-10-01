@@ -27,6 +27,14 @@ assert.equal(packet.data.tombstones[0].id,'del-1');assert.equal(packet.data.tomb
 const motoSource=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
 const motoHtml=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 const motoWorker=fs.readFileSync(path.join(__dirname,'..','service-worker.js'),'utf8');
+const renderingHelpers=motoSource.slice(motoSource.indexOf('const brl='),motoSource.indexOf('\nfunction toast'));
+const renderingContext=vm.createContext({Date,Number,String,Math});
+vm.runInContext(`${renderingHelpers}\nthis.esc=esc;this.safeSignatureDataUrl=safeSignatureDataUrl;`,renderingContext);
+assert.equal(renderingContext.esc('" onmouseover="alert(1)'), '&quot; onmouseover=&quot;alert(1)');
+assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AAAA'), 'data:image/png;base64,AAAA');
+assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AA" onerror="alert(1)'), '', 'untrusted signature markup is not used as an image URL');
+assert(motoSource.includes('data-view="${esc(r.id)}"'),'imported race IDs are escaped in HTML attributes');
+assert(motoSource.includes('src="${esc(signature)}"'),'signature source is constrained and escaped');
 assert(motoHtml.includes('<script src="contract.js?v=1"></script><script src="app.js?v=39.6"></script>'),'browser must load contract before its app consumer');
 assert(motoWorker.includes("'./contract.js?v=1'"),'contract must be available from offline precache');
 assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
@@ -37,6 +45,13 @@ assert(motoSource.includes("const storedEvent={...deliveryEvent,id:deliveryEvent
 assert(motoSource.includes('await persistOnly(opts)'));
 assert(motoSource.includes("function deleteRiderRace(id)"));
 assert(motoSource.includes('const deliveries=state.races.filter(r=>!r.deleted).map'));
+assert(motoSource.includes("await tx(['races','deliveries','meta'],'readwrite',t=>"),'startup projection normalization is one transaction');
+assert(motoSource.includes('function commitRouteOrder(ids){return commitRiderCommand('),'route-order settings use the shared serialized command queue');
+const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculateRoadDistances(rs){'),motoSource.indexOf('\nfunction requestRoadDistances'));
+assert(routeMetrics.includes('commitRiderCommand('),'route distance results publish only after snapshot persistence');
+assert(!routeMetrics.includes('persistOnly('),'route distance calculations do not persist already-mutated global races');
+assert(motoSource.includes("tx(['races','deliveries','inbox','tombstones'],'readwrite',t=>"),'received tombstones commit with sync receipt and projections');
+assert(motoSource.includes('return enqueueRiderCommand(()=>receiveRestaurantPacketNow(packet))'),'sync receipt is serialized with local rider commands');
 // History deletion must commit tombstones and all cleared projections together.
 const historyDeleteStart=motoSource.indexOf("$('#clearData').onclick=");
 const historyDelete=motoSource.slice(historyDeleteStart,historyDeleteStart+1800);
