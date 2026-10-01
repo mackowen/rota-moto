@@ -1,0 +1,27 @@
+{
+  "name": "rota-moto",
+  "version": "1.0.0",
+  "description": "Base: Rota Moto v39.2.",
+  "main": "app.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mackowen/rota-moto.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mackowen/rota-moto/issues"
+  },
+  "homepage": "https://github.com/mackowen/rota-moto#readme",
+  "devDependencies": {
+    "chrome-remote-interface": "^0.34.0"
+  }
+}
