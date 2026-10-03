@@ -2,19 +2,21 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const source=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
 const extract=(start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert(a>=0&&b>a,`missing ${start}`);return source.slice(a,b)};
+const lock=extract('function withRiderWriteLock(', '\nasync function readPersistedRiderSnapshot');
 const persist=extract('async function persistOnly(', '\nlet riderCommandQueue=');
 const commands=extract('let riderCommandQueue=Promise.resolve();','\nfunction commitRaceCommand');
 const seedRace={id:'race-1',deliveryId:'delivery-1',companyId:'company_local',version:4,updatedAt:'2026-10-01T12:00:00.000Z',status:'open'};
-const db=new Map([['races',new Map([[seedRace.id,structuredClone(seedRace)]])],['deliveries',new Map([[seedRace.id,{id:seedRace.id}]])],['meta',new Map()],['tombstones',new Map()]]);
+const db=new Map([['races',new Map([[seedRace.id,structuredClone(seedRace)]])],['deliveries',new Map([[seedRace.id,{id:seedRace.id}]])],['meta',new Map([['settings',{key:'settings',value:{companyId:'company_local',routeOrderIds:[seedRace.id]}}]])],['tombstones',new Map()]]);
 const ui={renders:0,backups:0,fail:false,gate:null};
 const context=vm.createContext({
- structuredClone,Promise,Date,Error,Array,Object,JSON,console:{warn(){}},
+ structuredClone,Promise,Date,Error,Array,Object,JSON,DB_NAME:'RotaMotoDB',navigator:{locks:{request(_name,_options,run){return run()}}},console:{warn(){}},
  state:{races:[structuredClone(seedRace)],settings:{companyId:'company_local',routeOrderIds:[seedRace.id]}},
+ normalizeSettings:value=>value,readPersistedRiderSnapshot:async()=>({races:structuredClone([...db.get('races').values()]),settings:structuredClone(db.get('meta').get('settings')?.value||{})}),
  RotaMotoContract:{tombstone(race,store){return{id:race.deliveryId||race.id,store,companyId:race.companyId||'company_local',deleted:true,version:race.version+1,updatedAt:'2026-10-01T12:00:00.001Z',deletedAt:'2026-10-01T12:00:00.001Z'}},deliveryFromRace(race){return{id:race.id,status:race.status}}},
  localStorage:{setItem(){ui.backups++;ui.backupState=JSON.stringify(context.state)}},renderAll(){assert(!ui.fail,'UI cannot render while persistence is failing');ui.renders++},
  tx:async(names,_mode,write)=>{const stores=Array.isArray(names)?names:[names],staged=new Map(stores.map(name=>[name,new Map([...db.get(name)].map(([key,value])=>[key,structuredClone(value)]))]));const transaction={objectStore(name){assert(staged.has(name),`missing transaction store ${name}`);const rows=staged.get(name);return{clear(){rows.clear()},put(value){rows.set(value.id??value.key,structuredClone(value))}}}};write(transaction);if(ui.gate){const gate=ui.gate;ui.gate=null;await gate.promise}if(ui.fail)throw Error('simulated transaction abort');for(const [name,rows]of staged)db.set(name,rows)}
 });
-vm.runInContext(`${persist}\n${commands}\nthis.api={deleteRiderRace,commitRiderCommand};`,context);
+vm.runInContext(`${lock}\n${persist}\n${commands}\nthis.api={deleteRiderRace,commitRiderCommand};`,context);
 const api=context.api;
 async function run(){
  ui.fail=true;

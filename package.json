@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node tests/test-sync-contract.js && node tests/test-sync-adversarial.js && node tests/test-sync-flows.js && node tests/test-storage-lifecycle.js && node tests/test-packet-persistence.js && node tests/test-command-persistence.js && node tests/test-command-deletion.js"
+    "test": "node tests/test-sync-contract.js && node tests/test-sync-adversarial.js && node tests/test-sync-flows.js && node tests/test-storage-lifecycle.js && node tests/test-packet-persistence.js && node tests/test-command-persistence.js && node tests/test-command-deletion.js && node tests/test-command-cross-tab.js"
   },
   "repository": {
     "type": "git",

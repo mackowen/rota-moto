@@ -27,6 +27,7 @@ function makeDatabase(seed={}){
 }
 
 const validate=extract('async function validateRestaurantPacket(packet={}){','function receiveRestaurantPacket(packet={})');
+const lock=extract('function withRiderWriteLock(', '\nasync function readPersistedRiderSnapshot');
 const queue=extract('let riderCommandQueue=Promise.resolve();','\nfunction commitRiderCommand');
 const receive=source.slice(source.indexOf('function receiveRestaurantPacket(packet={})'),source.indexOf('\n\n\nfunction normalizeSettings'));
 const transaction=extract('async function tx(store,mode,fn){','async function persistOnly');
@@ -38,12 +39,13 @@ const contract={
 const ui={renders:0,success:0};
 const db=makeDatabase({races:[{id:'old',deliveryId:'old',status:'open'}],deliveries:[{id:'old'}],meta:[{key:'settings',value:{keep:true}}],inbox:[],tombstones:[{id:'deleted-before',store:'deliveries',deleted:true,updatedAt:'2026-10-01T12:05:00Z',version:5}]});
 const context=vm.createContext({
- Error,Date,JSON,Promise,Array,Object,Number,console:{warn(){},error(){}},
+ Error,Date,JSON,Promise,Array,Object,Number,DB_NAME:'RotaMotoDB',navigator:{locks:{request(_name,_options,run){return run()}}},console:{warn(){},error(){}},
  openDB:async()=>db,db,state:{races:[{id:'old',deliveryId:'old',status:'open'}],settings:{companyId:'company_local'}},
+ normalizeSettings:value=>value,readPersistedRiderSnapshot:async()=>({races:structuredClone(context.state.races),settings:structuredClone(context.state.settings)}),
  RotaMotoContract:contract,validateRestaurantPacket:null,renderAll(){ui.renders++},toast(_message,type){if(type==='success')ui.success++},localStorage:{setItem(){}},
  tx:null
 });
-vm.runInContext(`${queue}\n${transaction}\n${validate}\n${receive}\nthis.api={tx,receiveRestaurantPacket};`,context);
+vm.runInContext(`${lock}\n${queue}\n${transaction}\n${validate}\n${receive}\nthis.api={tx,receiveRestaurantPacket};`,context);
 const api=context.api;
 const packet={protocol:'rotamoto-sync',protocolVersion:1,schemaVersion:1,companyId:'company_local',packetId:'packet-1',data:{deliveries:[{id:'new-delivery',status:'OUT_FOR_DELIVERY',updatedAt:'2026-10-01T12:00:00Z'},{id:'deleted-before',status:'OUT_FOR_DELIVERY',updatedAt:'2026-10-01T12:00:00Z'}],tombstones:[{id:'old',store:'deliveries',companyId:'company_local',deleted:true,updatedAt:'2026-10-01T12:01:00Z',version:2}]}};
 const snapshot=()=>JSON.stringify(Object.fromEntries([...db.data].map(([name,rows])=>[name,[...rows.values()]])));

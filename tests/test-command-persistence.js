@@ -1,10 +1,13 @@
 'use strict';
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const source=fs.readFileSync(path.join(__dirname,'..','app.js'),'utf8');
+const lockStart=source.indexOf('function withRiderWriteLock('),lockEnd=source.indexOf('\nasync function readPersistedRiderSnapshot',lockStart);
+assert(lockStart>=0&&lockEnd>lockStart,'cross-tab write lock must exist');
 const start=source.indexOf('let riderCommandQueue=Promise.resolve();'),end=source.indexOf('\nfunction commitRaceCommand',start);
 assert(start>=0&&end>start,'command boundary must exist');
-const context=vm.createContext({structuredClone,Promise,console:{warn(){}},state:{races:[{id:'before'}],settings:{language:'pt',dailyGoal:0,theme:'auto'}},ui:{renders:0},localStorage:{setItem(){}},renderAll(){context.ui.renders++},persistOnly:async({snapshot})=>{if(context.ui.fail)throw Error('write failed');if(context.ui.wait){const gate=context.ui.wait;context.ui.wait=null;await gate.promise}context.ui.persisted=structuredClone(snapshot);context.ui.backup=structuredClone(snapshot)}});
-vm.runInContext(source.slice(start,end)+'\nthis.command=commitRiderCommand;',context);
+const context=vm.createContext({structuredClone,Promise,console:{warn(){}},DB_NAME:'RotaMotoDB',navigator:{locks:{request(_name,_options,run){return run()}}},state:{races:[{id:'before'}],settings:{language:'pt',dailyGoal:0,theme:'auto'}},ui:{renders:0},localStorage:{setItem(){}},normalizeSettings:value=>value,readPersistedRiderSnapshot:async()=>structuredClone(context.ui.persisted||context.state),renderAll(){context.ui.renders++},persistOnly:async({snapshot})=>{if(context.ui.fail)throw Error('write failed');if(context.ui.wait){const gate=context.ui.wait;context.ui.wait=null;await gate.promise}context.ui.persisted=structuredClone(snapshot);context.ui.backup=structuredClone(snapshot)}});
+context.ui.persisted=structuredClone(context.state);
+vm.runInContext(source.slice(lockStart,lockEnd)+'\n'+source.slice(start,end)+'\nthis.command=commitRiderCommand;',context);
 async function run(){
  const old=JSON.stringify(context.state);
  context.ui.fail=true;

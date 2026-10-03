@@ -51,7 +51,7 @@ const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculate
 assert(routeMetrics.includes('commitRiderCommand('),'route distance results publish only after snapshot persistence');
 assert(!routeMetrics.includes('persistOnly('),'route distance calculations do not persist already-mutated global races');
 assert(motoSource.includes("tx(['races','deliveries','inbox','tombstones'],'readwrite',t=>"),'received tombstones commit with sync receipt and projections');
-assert(motoSource.includes('return enqueueRiderCommand(()=>receiveRestaurantPacketNow(packet))'),'sync receipt is serialized with local rider commands');
+assert(motoSource.includes('return enqueueRiderWrite(()=>receiveRestaurantPacketNow(packet),{refreshState:true})'),'sync receipt shares cross-tab write lock and refreshes persisted state');
 // History deletion must commit tombstones and all cleared projections together.
 const historyDeleteStart=motoSource.indexOf("$('#clearData').onclick=");
 const historyDelete=motoSource.slice(historyDeleteStart,historyDeleteStart+1800);
