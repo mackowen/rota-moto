@@ -10,7 +10,7 @@ const db=new Map([['races',new Map([[seedRace.id,structuredClone(seedRace)]])],[
 const ui={renders:0,backups:0,fail:false,gate:null};
 const context=vm.createContext({
  structuredClone,Promise,Date,Error,Array,Object,JSON,DB_NAME:'RotaMotoDB',navigator:{locks:{request(_name,_options,run){return run()}}},console:{warn(){}},
- state:{races:[structuredClone(seedRace)],settings:{companyId:'company_local',routeOrderIds:[seedRace.id]}},
+ state:{races:[structuredClone(seedRace)],settings:{companyId:'company_local',routeOrderIds:[seedRace.id]}},syncBootstrapReady:false,
  normalizeSettings:value=>value,readPersistedRiderSnapshot:async()=>({races:structuredClone([...db.get('races').values()]),settings:structuredClone(db.get('meta').get('settings')?.value||{})}),
  RotaMotoContract:{tombstone(race,store){return{id:race.deliveryId||race.id,store,companyId:race.companyId||'company_local',deleted:true,version:race.version+1,updatedAt:'2026-10-01T12:00:00.001Z',deletedAt:'2026-10-01T12:00:00.001Z'}},deliveryFromRace(race){return{id:race.id,status:race.status}}},
  localStorage:{setItem(){ui.backups++;ui.backupState=JSON.stringify(context.state)}},renderAll(){assert(!ui.fail,'UI cannot render while persistence is failing');ui.renders++},

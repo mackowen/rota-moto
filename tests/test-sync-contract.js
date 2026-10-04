@@ -16,10 +16,10 @@ const d=C.deliveryFromOrder({id:'ord_1',deliveryId:'del_1',companyId:'c1',status
 assert.deepEqual({id:d.id,orderId:d.orderId,driverId:d.driverId,status:d.status},{id:'del_1',orderId:'ord_1',driverId:'drv_1',status:'ASSIGNED'});
 const packet=C.packet({companyId:'c1',deviceId:'dev_rest',app:'RotaMoto Restaurante',deliveries:[d]});
 assert.equal(packet.protocol,'rotamoto-sync');assert.equal(packet.companyId,'c1');assert.equal(packet.data.deliveries.length,1);assert(packet.packetId);
-assert.match(appSource,/window\.RotaMotoSync\.loginToServer=loginToSyncServer/);assert.match(appSource,/syncWithServer/);
+assert.match(appSource,/loginToServer:loginToSyncServer/);assert.match(appSource,/restoreSession:restoreSyncSession/);assert.match(appSource,/syncWithServer/);
 assert.match(appSource,/sync-packet:/);assert.match(appSource,/operationResults/);
 assert.match(appSource,/canonical:\$\{event\.entity\}:\$\{event\.entityId\}/);
-assert.match(appSource,/\['inbox','syncState'\]/);
+assert.match(appSource,/stores=\['inbox','syncState'/);
 assert.match(appSource,/X-CSRF-Token/);
 if(appSource.includes("function recordDeliveryEvent(type,r,payload={}")){
   const builder=appSource.slice(appSource.indexOf('async function buildSyncPacket'),appSource.indexOf('function downloadSyncPacket'));
@@ -32,7 +32,7 @@ if(appSource.includes("function recordDeliveryEvent(type,r,payload={}")){
   assert(!builder.includes('packet.data.settings='),'local settings are excluded from canonical sync');
 }
 const syncTransport=appSource.slice(appSource.indexOf('async function syncWithServer'),appSource.indexOf('async function persistSyncAck'));
-assert(syncTransport.indexOf('const ack=await send')<syncTransport.indexOf('persistSyncAck(packet,ack.operationResults)'),
+assert(syncTransport.indexOf('const ack=await send')<syncTransport.indexOf('persistSyncAck(queued.packet,ack.operationResults'),
   'local ACK state is written only after a successful HTTP response');
 assert(syncTransport.includes('sync-packet:')&&syncTransport.includes("status:'pending'"),
   'packet retry is retained in IndexedDB outbox until a response is received');

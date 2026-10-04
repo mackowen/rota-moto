@@ -35,7 +35,7 @@ assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AAAA')
 assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AA" onerror="alert(1)'), '', 'untrusted signature markup is not used as an image URL');
 assert(motoSource.includes('data-view="${esc(r.id)}"'),'imported race IDs are escaped in HTML attributes');
 assert(motoSource.includes('src="${esc(signature)}"'),'signature source is constrained and escaped');
-assert(motoHtml.includes('<script src="contract.js?v=1"></script><script src="app.js?v=39.6"></script>'),'browser must load contract before its app consumer');
+assert(motoHtml.includes('<script src="contract.js?v=1"></script><script src="sync-reconciliation.js?v=1"></script><script src="app.js?v=39.7"></script>'),'browser must load the contract and reconciliation layer before its app consumer');
 assert(motoWorker.includes("'./contract.js?v=1'"),'contract must be available from offline precache');
 assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
 // Execution facts and their outbound queue entry must commit or abort together.
