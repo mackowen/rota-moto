@@ -426,3 +426,6 @@ nav{box-shadow:0 -6px 24px rgba(16,24,40,.07);padding-bottom:env(safe-area-inset
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
+
+.badge.accepted{background:#ede9fe;color:#6d28d9}.badge.picked-up{background:#cffafe;color:#155e75}.earnDay{display:flex;justify-content:space-between;gap:12px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:12px}.earnDay:last-child{border-bottom:0}.earnDay span{font-weight:750;text-align:right;overflow-wrap:anywhere}
+.attemptHistory{display:grid;gap:4px;padding:9px 0;border-bottom:1px solid var(--line)}.attemptHistory:last-child{border-bottom:0}.attemptHistory small{color:var(--muted);overflow-wrap:anywhere}
