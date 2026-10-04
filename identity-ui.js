@@ -14,9 +14,9 @@
   };
   const host = document.createElement('div');
   host.id = 'rmIdentityRoot';
-  host.innerHTML = `<button type="button" class="rm-account-trigger" aria-controls="rmIdentityPanel" aria-expanded="false">Conta e acesso</button>
-    <section id="rmIdentityPanel" class="rm-identity-panel" role="region" aria-label="Conta e autenticação" hidden>
-      <header><div><strong>Conta RotaMoto</strong><small data-identity-status>Verificando sessão…</small></div><button type="button" data-close aria-label="Fechar painel">×</button></header>
+  host.innerHTML = `<button type="button" class="rm-account-trigger" aria-label="Abrir conta e acesso" aria-controls="rmIdentityPanel" aria-expanded="false">Conta</button>
+    <section id="rmIdentityPanel" class="rm-identity-panel" role="dialog" aria-modal="true" aria-labelledby="rmIdentityTitle" hidden>
+      <header><div><strong id="rmIdentityTitle">Conta RotaMoto</strong><small data-identity-status>Verificando sessão…</small></div><button type="button" data-close aria-label="Fechar painel">×</button></header>
       <div class="rm-identity-content">
         <form data-login novalidate><h2>Entrar</h2><label>Email<input name="email" type="email" autocomplete="username" required maxlength="320"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="1024"></label>
@@ -67,7 +67,38 @@
     if (!response.ok) { const error = new Error(body.error?.code || 'REQUEST_FAILED'); error.code = body.error?.code; error.status = response.status; throw error; }
     return body;
   }
-  function setOpen(open) { panel.hidden = !open; trigger.setAttribute('aria-expanded', String(open)); if (open) panel.querySelector('input:not([disabled])')?.focus(); }
+  let previousFocus = null;
+  function placeTrigger() {
+    const app = document.querySelector('#app');
+    const anchor = current || offlineMode ? app?.querySelector('.top') : null;
+    const parent = anchor || host;
+    if (trigger.parentElement !== parent) parent.append(trigger);
+    trigger.classList.toggle('rm-account-trigger--inline', Boolean(anchor));
+  }
+  function visibleControls() {
+    return [...panel.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[href],[tabindex]:not([tabindex="-1"])')]
+      .filter(element => !element.closest('[hidden]') && element.getClientRects().length > 0);
+  }
+  function setOpen(open) {
+    if (open && panel.hidden) previousFocus = document.activeElement;
+    panel.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    const app = document.querySelector('#app');
+    const gated = host.dataset.gated === 'true';
+    if (app) { app.inert = open || gated; app.setAttribute('aria-hidden', String(open || gated)); }
+    if (open) (visibleControls()[0] || panel).focus();
+    else if (previousFocus?.isConnected && !panel.contains(previousFocus) && !previousFocus.closest('[inert]')) previousFocus.focus();
+    else if (!gated) trigger.focus();
+  }
+  panel.tabIndex = -1;
+  panel.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { if (current || offlineMode) { event.preventDefault(); setOpen(false); } return; }
+    if (event.key !== 'Tab') return;
+    const controls = visibleControls();
+    if (!controls.length) { event.preventDefault(); panel.focus(); return; }
+    if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1).focus(); }
+    else if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0].focus(); }
+  });
   function setStatus(text) { $('[data-identity-status]').textContent = text; }
   function setBusy(form, busy) { form.querySelectorAll('button').forEach(button => { button.disabled = busy; }); }
   function showSession(session) {
@@ -82,7 +113,7 @@
     if (appRoot) { appRoot.inert = !session && !offlineMode; appRoot.setAttribute('aria-hidden', String(!session && !offlineMode)); }
     host.dataset.gated = String(!session && !offlineMode);
     $('[data-admin]').hidden = !(session && appKind === 'restaurante' && session.permissions?.includes('company.manage'));
-    trigger.hidden = false;
+    trigger.hidden = false; placeTrigger();
     if (session) {
       $('[data-user-email]').textContent = session.email;
       $('[data-company-id]').textContent = session.activeCompanyId;
@@ -236,5 +267,7 @@
   window.addEventListener('rotamoto:session-expired', expireSession);
   const initialAppRoot = document.querySelector('#app'); if (initialAppRoot) { initialAppRoot.inert = true; initialAppRoot.setAttribute('aria-hidden', 'true'); }
   host.dataset.gated = 'true'; trigger.hidden = false; setOpen(true); restore().then(async session => { if (session) { setOpen(false); await syncAfterAuthentication(); } });
+  const appRoot = document.querySelector('#app');
+  if (appRoot) new MutationObserver(placeTrigger).observe(appRoot, { childList: true, subtree: true });
   window.RotaMotoIdentity = Object.freeze({ restore, getSession: () => current, isOfflineMode: () => offlineMode });
 })();

@@ -6,6 +6,7 @@ const path = require('node:path');
 const uiPath = path.join(__dirname, '..', 'identity-ui.js');
 const htmlPath = path.join(__dirname, '..', 'index.html');
 const source = fs.readFileSync(uiPath, 'utf8');
+const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const styles = fs.readFileSync(path.join(__dirname, '..', 'identity-ui.css'), 'utf8');
 
@@ -25,11 +26,24 @@ assert.match(source, /MFA_REQUIRED/u, 'MFA errors remain visible and fail closed
 assert.match(source, /rotamoto:session-expired/u, 'sync session expiry returns the app to authentication');
 assert.match(source, /function expireSession/u, 'an HTTP 401 also clears the authenticated UI state');
 assert.match(source, /clearSession/u, 'logout clears in-memory sync credentials');
+assert.match(source, /role="dialog" aria-modal="true"/u, 'account access is exposed as a modal dialog');
+assert.match(source, /visibleControls\(\)/u, 'account dialog keeps keyboard focus within visible controls');
+assert.match(source, /placeTrigger\(\)/u, 'authenticated account access is attached to the application header');
+assert.match(source, /app\.inert = open \|\| gated/u, 'opening the account dialog makes the background inert');
+assert.match(appSource, /document\.addEventListener\('keydown',e=>\{const m=\$\('#modal'\)/u, 'operational modal traps keyboard focus and handles Escape');
+assert.match(appSource, /historyPeriod button[\s\S]{0,280}aria-pressed/u, 'history period toggles expose their selected state');
+assert.doesNotMatch(appSource, /function syncRaceFilterUI\(\)[\s\S]{0,260}aria-current/u, 'filters use pressed state instead of page-navigation semantics');
 assert.match(source, /somente com dados locais/iu, 'offline mode is explicitly distinct from authenticated access');
 assert.doesNotMatch(source, /localStorage\.(?:setItem|getItem)\(['"](?:session|csrf|password|token)/iu);
 assert.match(html, /identity-ui\.css/u);
 assert.match(html, /identity-ui\.js/u);
+assert.match(html, /aria-label="Navegação principal"/u, 'primary mobile navigation has an accessible name');
+assert.match(html, /id="modal" class="modal" role="dialog" aria-modal="true"/u, 'operational modal declares its dialog semantics');
+assert.match(html, /id="raceSearch" aria-label=/u, 'race search has an accessible name');
 assert.equal(fs.existsSync(path.join(__dirname, '..', 'identity-ui.css')), true);
-assert.match(styles, /#rmIdentityRoot \[hidden\]\s*\{\s*display:\s*none\s*!important/u,
+assert.match(styles, /#rmIdentityRoot \[hidden\],[\s\S]*?display:\s*none\s*!important/u,
   'auth form and permission-gated controls honor the hidden state despite component display rules');
+assert.match(styles, /z-index:\s*2302/u, 'account dialog appears above fixed application navigation');
+assert.match(styles, /safe-area-inset-bottom/u, 'identity panel respects device safe areas');
+assert.match(styles, /prefers-reduced-motion:\s*reduce/u, 'identity panel respects reduced motion');
 console.log('identity UI and secure session client contract: OK');
