@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');
 const index=fs.readFileSync(require.resolve('../index.html'),'utf8');
-assert.match(worker,/rota-moto-v40\.5/u,'service worker cache version is advanced');
+assert.match(worker,/rota-moto-v40\.6/u,'service worker cache version is advanced');
 assert.match(worker,/\/\^\\\/api/u,'API request path is excluded from Cache Storage');
 assert.match(worker,/url\.origin!==location\.origin/u,'cross-origin provider/CDN requests are not cached');
 assert.match(worker,/assetUrls\.has\(url\.href\)/u,'only exact versioned shell assets are eligible for cache');

@@ -106,13 +106,17 @@
     $('[data-login]').hidden = Boolean(session); $('[data-authenticated]').hidden = !session;
     $('[data-offline]').hidden = Boolean(session); $('[data-recovery]').hidden = Boolean(session);
     $('[data-invitation]').hidden = Boolean(session);
-    $('[data-invite]').hidden = !session?.permissions?.includes('members.invite');
-    $('[data-members]').hidden = !session?.permissions?.includes('members.read');
-    $('[data-members-note]').hidden = Boolean(session?.permissions?.includes('members.read'));
+    const inviteForm = $('[data-invite]');
+    const membersList = $('[data-members]');
+    const membersNote = $('[data-members-note]');
+    const adminPanel = $('[data-admin]');
+    if (inviteForm) inviteForm.hidden = !session?.permissions?.includes('members.invite');
+    if (membersList) membersList.hidden = !session?.permissions?.includes('members.read');
+    if (membersNote) membersNote.hidden = Boolean(session?.permissions?.includes('members.read'));
     const appRoot = document.querySelector('#app');
     if (appRoot) { appRoot.inert = !session && !offlineMode; appRoot.setAttribute('aria-hidden', String(!session && !offlineMode)); }
     host.dataset.gated = String(!session && !offlineMode);
-    $('[data-admin]').hidden = !(session && appKind === 'restaurante' && session.permissions?.includes('company.manage'));
+    if (adminPanel) adminPanel.hidden = !(session && appKind === 'restaurante' && session.permissions?.includes('company.manage'));
     trigger.hidden = false; placeTrigger();
     if (session) {
       $('[data-user-email]').textContent = session.email;
@@ -120,7 +124,7 @@
       try { localStorage.setItem('rotaMoto.activeCompanyHint', session.activeCompanyId); } catch (_) {}
       setStatus('Sessão ativa');
       $('[data-login-error]').textContent = '';
-      if (!$('[data-admin]').hidden) loadAdmin().catch(error => { $('[data-admin-error]').textContent = message(error); });
+      if (adminPanel && !adminPanel.hidden) loadAdmin().catch(error => { $('[data-admin-error]').textContent = message(error); });
     } else setStatus(navigator.onLine === false ? 'Offline · somente modo local' : 'Sem sessão autenticada');
   }
   function expireSession() {
