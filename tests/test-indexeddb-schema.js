@@ -6,7 +6,7 @@ const expected=['meta','races','deliveries','deliveryEvents','locations','proofs
 function fakeDatabase(existingNames=[]){
   const stores=new Map();
   const objectStoreNames={contains:name=>stores.has(name),[Symbol.iterator]:function*(){yield*stores.keys()}};
-  const create=(name,keyPath)=>{const indexes=new Map();const store={keyPath,indexes,indexNames:{contains:n=>indexes.has(n)},createIndex(n,k,options){if(indexes.has(n))throw new Error('duplicate index');indexes.set(n,{keyPath:k,unique:options.unique})},put(value){this.lastPut=value}};stores.set(name,store);return store};
+  const create=(name,keyPath)=>{const indexes=new Map();const store={keyPath,indexes,indexNames:{contains:n=>indexes.has(n)},createIndex(n,k,options){if(indexes.has(n))throw new Error('duplicate index');indexes.set(n,{keyPath:k,unique:options.unique})},deleteIndex(n){indexes.delete(n)},put(value){this.lastPut=value}};stores.set(name,store);return store};
   const db={objectStoreNames,createObjectStore(name,opts){if(stores.has(name))throw new Error('duplicate store');return create(name,opts.keyPath)}};
   for(const name of existingNames)create(name,name==='meta'?'key':'id');
   const tx={objectStoreNames,objectStore:name=>{if(!stores.has(name))throw new Error(`missing store ${name}`);return stores.get(name)}};
@@ -15,18 +15,22 @@ function fakeDatabase(existingNames=[]){
 const window={};vm.runInNewContext(fs.readFileSync('indexeddb-schema.js','utf8'),{window,Error,Object,Number});
 const schema=window.RotaMotoStorageSchema;
 assert.deepEqual(Array.from(schema.stores),expected);
-assert.equal(schema.version,6);
-const fresh=fakeDatabase();schema.upgrade(fresh.db,fresh.tx,0,6);
+assert.equal(schema.version,7);
+const fresh=fakeDatabase();schema.upgrade(fresh.db,fresh.tx,0,7);
 assert.deepEqual(Array.from(fresh.stores.keys()),expected);
 assert.equal(fresh.stores.get('meta').lastPut.key,'storageSchemaVersion');
-assert.equal(fresh.stores.get('meta').lastPut.value,6);
+assert.equal(fresh.stores.get('meta').lastPut.value,7);
 assert.ok([...fresh.stores.values()].some(store=>store.indexes.size>0));
 const old=fakeDatabase(expected);
 old.stores.get('races').legacyRecord={id:'keep',status:'open'};
-schema.upgrade(old.db,old.tx,5,6);
+old.stores.get('deliveryEvents').createIndex('byDeliveryId','deliveryId',{unique:false});
+old.stores.get('deliveryEvents').createIndex('byEventId','eventId',{unique:false});
+old.stores.get('deliveryEvents').createIndex('byCreatedAt','createdAt',{unique:false});
+schema.upgrade(old.db,old.tx,6,7);
 assert.deepEqual(old.stores.get('races').legacyRecord,{id:'keep',status:'open'});
 assert.equal(old.stores.get('meta').lastPut.key,'storageSchemaVersion');
-assert.equal(old.stores.get('meta').lastPut.value,6);
-assert.ok(old.stores.get('races').indexNames.contains('byDeliveryId'));
-assert.throws(()=>schema.upgrade(old.db,old.tx,0,7),/inválida/);
+assert.equal(old.stores.get('meta').lastPut.value,7);
+assert.equal(old.stores.get('deliveryEvents').indexes.get('byEntityId').keyPath,'entityId');
+assert.ok(!old.stores.get('deliveryEvents').indexNames.contains('byDeliveryId'));
+assert.throws(()=>schema.upgrade(old.db,old.tx,0,8),/inválida/);
 console.log('Motoboy IndexedDB schema migrations: OK');

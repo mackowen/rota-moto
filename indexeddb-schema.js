@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION = 6;
+  const VERSION = 7;
   const storeNames = ['meta','races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','tombstones','syncState'];
   const migrations = {
     1: ({db}) => {
@@ -28,6 +28,12 @@
         const store=transaction.objectStore(name);
         for (const [indexName,keyPath] of indexes) if (!store.indexNames.contains(indexName)) store.createIndex(indexName,keyPath,{unique:false});
       }
+    },
+    7: ({transaction}) => {
+      const store=transaction.objectStore('deliveryEvents');
+      for(const name of ['byDeliveryId','byCreatedAt'])if(store.indexNames.contains(name))store.deleteIndex(name);
+      if(!store.indexNames.contains('byEntityId'))store.createIndex('byEntityId','entityId',{unique:false});
+      if(!store.indexNames.contains('byOccurredAt'))store.createIndex('byOccurredAt','occurredAt',{unique:false});
     }
   };
   function upgrade(db,transaction,oldVersion,newVersion){
