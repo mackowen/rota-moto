@@ -40,6 +40,7 @@ assert.match(html, /identity-ui\.js/u);
 assert.match(html, /aria-label="Navegação principal"/u, 'primary mobile navigation has an accessible name');
 assert.match(html, /id="modal" class="modal" role="dialog" aria-modal="true"/u, 'operational modal declares its dialog semantics');
 assert.match(html, /id="raceSearch" aria-label=/u, 'race search has an accessible name');
+assert.match(html, /Escopo dos ajustes[\s\S]{0,320}Ganhos canônicos continuam publicados pelo Restaurante/u, 'local earnings settings are distinguished from canonical Restaurante earnings');
 assert.equal(fs.existsSync(path.join(__dirname, '..', 'identity-ui.css')), true);
 assert.match(styles, /#rmIdentityRoot \[hidden\],[\s\S]*?display:\s*none\s*!important/u,
   'auth form and permission-gated controls honor the hidden state despite component display rules');
