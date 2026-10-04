@@ -3,11 +3,12 @@
  const ENTITIES=new Set(['Order','Delivery','Route','Driver','Earning','DeliveryEvent','LocationPoint','DeliveryProof']);
  const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
  function canonicalEvent(raw,companyId){
-  if(!raw||typeof raw!=='object'||Array.isArray(raw)||!UUID.test(String(raw.eventId||''))||raw.protocolVersion!==1||!ENTITIES.has(raw.entity)||!UUID.test(String(raw.entityId||''))||!['CANONICAL_RECORD_UPSERTED','CANONICAL_RECORD_TOMBSTONED'].includes(raw.type))throw new Error('CANONICAL_EVENT_INVALID');
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||!UUID.test(String(raw.eventId||''))||raw.protocolVersion!==1||!ENTITIES.has(raw.entity)||!UUID.test(String(raw.entityId||''))||!['CANONICAL_RECORD_UPSERTED','CANONICAL_RECORD_TOMBSTONED','CANONICAL_ASSIGNMENT_REVOKED'].includes(raw.type))throw new Error('CANONICAL_EVENT_INVALID');
   const payload=raw.payload;if(!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('CANONICAL_PAYLOAD_INVALID');
   if(payload.companyId&&payload.companyId!==companyId)throw new Error('CANONICAL_TENANT_MISMATCH');
   const version=Number(payload.version);if(!Number.isSafeInteger(version)||version<1)throw new Error('CANONICAL_VERSION_INVALID');
-  if(raw.type==='CANONICAL_RECORD_UPSERTED'&&String(payload.id)!==String(raw.entityId))throw new Error('CANONICAL_ID_MISMATCH');
+  if(String(payload.id)!==String(raw.entityId))throw new Error('CANONICAL_ID_MISMATCH');
+  if(raw.type==='CANONICAL_ASSIGNMENT_REVOKED'&&raw.entity!=='Delivery')throw new Error('CANONICAL_REVOCATION_INVALID');
   return {eventId:raw.eventId,type:raw.type,entity:raw.entity,entityId:raw.entityId,version,payload:{...payload},occurredAt:raw.occurredAt};
  }
  function decide({localVersion=0,localPending=false,priorStatus=null,incomingVersion,tombstone=false}){
@@ -28,7 +29,7 @@
   if(!localStatus)throw new Error('CANONICAL_DELIVERY_STATUS_INVALID');
   const coords=Array.isArray(order.coords)?order.coords:null,lat=order.latitude??order.lat??coords?.[0]??current.lat,lng=order.longitude??order.lng??coords?.[1]??current.lng;
   const cancelled=tombstone||status==='CANCELLED';
-  return {...current,...remote,id:current.id||remote.id,deliveryId:remote.id,orderId:remote.orderId||order.id||current.orderId||null,
+  return {...current,...remote,id:current.id||remote.id,deliveryId:remote.id,orderId:remote.orderId||order.id||current.orderId||null,assignmentRevoked:false,
    driverId:remote.driverId||current.driverId||null,companyId:remote.companyId||order.companyId||current.companyId,
    canonicalStatus:status,status:cancelled?'cancelled':pendingExecution?current.status:localStatus,
    acceptedAt:pendingExecution?current.acceptedAt:remote.acceptedAt||current.acceptedAt,

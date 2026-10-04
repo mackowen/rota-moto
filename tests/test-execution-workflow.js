@@ -18,6 +18,8 @@ for (const [status, actions] of Object.entries(expected)) {
   }
 }
 assert.equal(workflow.action('ASSIGNED', 'deliver'), null);
+assert.equal(workflow.action('ASSIGNED', 'accept', { assignmentRevoked: true }), null);
+assert.deepEqual(workflow.allowedActions('ASSIGNED', { assignmentRevoked: true }), []);
 assert.equal(workflow.action('REDELIVERY', 'accept'), null);
 assert.equal(workflow.localStatus('RETURNED'), 'issue');
 assert.equal(workflow.localStatus('REDELIVERY'), 'open');

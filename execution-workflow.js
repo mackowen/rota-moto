@@ -21,12 +21,13 @@
   function canonicalStatus(race, contract) {
     return race?.canonicalStatus || contract.normalizeDeliveryStatus(race?.status, 'motoboy');
   }
-  function action(status, name) {
+  function action(status, name, race = null) {
+    if (race?.assignmentRevoked) return null;
     const result = ACTIONS[status]?.[name];
     return result ? Object.freeze({ to: result[0], eventType: result[1] }) : null;
   }
-  function allowedActions(status) {
-    return Object.keys(ACTIONS[status] || {});
+  function allowedActions(status, race = null) {
+    return race?.assignmentRevoked ? [] : Object.keys(ACTIONS[status] || {});
   }
   function localStatus(status) {
     return LOCAL_STATUS[status] || null;

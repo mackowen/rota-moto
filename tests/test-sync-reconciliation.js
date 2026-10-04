@@ -4,6 +4,9 @@ const R=require('../sync-reconciliation.js');
 const uuid='00000000-0000-4000-8000-000000000001';
 const event={eventId:uuid,type:'CANONICAL_RECORD_UPSERTED',entity:'Delivery',entityId:uuid,occurredAt:'2026-10-04T10:00:00.000Z',protocolVersion:1,payload:{id:uuid,companyId:'tenant-a',version:3,status:'ASSIGNED',driverId:'driver-a',priority:'HIGH',assignedAt:'2026-10-04T09:00:00.000Z',estimatedDistanceM:2400,orderId:'00000000-0000-4000-8000-000000000002'}};
 assert.equal(R.canonicalEvent(event,'tenant-a').version,3);
+const revoked={eventId:'00000000-0000-4000-8000-000000000009',type:'CANONICAL_ASSIGNMENT_REVOKED',entity:'Delivery',entityId:uuid,occurredAt:'2026-10-04T10:00:00.000Z',protocolVersion:1,payload:{id:uuid,companyId:'tenant-a',version:4,updatedAt:'2026-10-04T10:00:00.000Z'}};
+assert.equal(R.canonicalEvent(revoked,'tenant-a').type,'CANONICAL_ASSIGNMENT_REVOKED');
+assert.throws(()=>R.canonicalEvent({...revoked,entity:'Order'},'tenant-a'),/REVOCATION_INVALID/);
 assert.throws(()=>R.canonicalEvent(event,'tenant-b'),/TENANT_MISMATCH/);
 assert.equal(R.decide({localVersion:2,incomingVersion:3}),'apply');
 assert.equal(R.decide({localVersion:2,incomingVersion:3,localPending:true}),'conflict');
@@ -14,6 +17,7 @@ assert.equal(R.shouldRetry('rejected',false),false);assert.equal(R.shouldRetry('
 const opMap=new Map([['operation:event-local',{canonicalId:'00000000-0000-4000-8000-000000000099'}]]);assert.equal(R.findCanonicalFact([{id:'event-local'}],'00000000-0000-4000-8000-000000000099',opMap,row=>`operation:${row.id}`).id,'event-local');
 const race=R.projectMotoboyDelivery(event.payload,{id:event.payload.orderId,customer:{name:'Jo'},address:'Rua A',coords:[-23,-46],items:[{name:'X'}]},{status:'route',startedAt:'2026-10-04T09:30:00Z'},{pendingExecution:true});
 assert.equal(race.status,'route');assert.equal(race.driverId,'driver-a');assert.equal(race.client,'Jo');assert.equal(race.lat,-23);assert.equal(race.sync.canonicalVersion,3);
+assert.equal(R.projectMotoboyDelivery(event.payload,{}, {assignmentRevoked:true}).assignmentRevoked,false,'a new canonical assignment clears the local revocation marker');
 const cancelled=R.projectMotoboyDelivery({...event.payload,status:'CANCELLED',version:4},{},{status:'route'},{pendingExecution:true});assert.equal(cancelled.status,'cancelled');assert.equal(cancelled.sync.state,'conflict');
 const restaurant=R.projectRestaurantDelivery({...event.payload,status:'OUT_FOR_DELIVERY',version:4},{id:'local-del',driverId:'local-driver',priority:'NORMAL',assignedAt:'local-time',estimatedDistanceM:10,status:'ASSIGNED'},{pendingPlanning:true});
 assert.equal(restaurant.id,'local-del');assert.equal(restaurant.driverId,'local-driver');assert.equal(restaurant.status,'ASSIGNED');assert.equal(restaurant.sync.state,'conflict');
