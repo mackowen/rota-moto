@@ -84,20 +84,48 @@ async function loadDB(){return withRiderWriteLock(async()=>{
 async function saveAll(opts={}){return enqueueRiderWrite(async()=>{await persistOnly(opts);renderAll();if(opts.recalcRoute){try{return await refreshActiveRoute()}catch(err){console.warn('route refresh failed after local save',err);toast('Dados salvos; não foi possível atualizar a rota.','error')}}},{refreshState:true})}
 async function buildSyncPacket(){
   const companyId=state.settings?.companyId||state.settings?.global?.companyId||'company_local';
-  const deviceId=state.settings?.deviceId||state.settings?.driverId||null;
-  const [deliveryEvents,locations,proofs,earnings,tombstones]=await Promise.all([
+  const deviceId=await ensureSyncDeviceId();
+  const [deliveryEvents,locations,proofs,tombstones,syncRows]=await Promise.all([
     tx('deliveryEvents','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
     tx('locations','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
     tx('proofs','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
-    tx('earnings','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
-    tx('tombstones','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)}))
+    tx('tombstones','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)})),
+    tx('syncState','readonly',s=>new Promise((resolve,reject)=>{const q=s.getAll();q.onsuccess=()=>resolve(q.result||[]);q.onerror=()=>reject(q.error)}))
   ]);
-  const deliveries=state.races.filter(r=>!r.deleted).map(r=>RotaMotoContract.deliveryFromRace(r,companyId,state.settings.driverId||null));
-  const pendingEvents=deliveryEvents.filter(e=>e && !e.acknowledgedAt);
-  const packet=RotaMotoContract.packet({companyId,deviceId,app:'RotaMoto',events:[],deliveries,drivers:[],routes:[],locationUpdates:locations,deliveryEvents:pendingEvents,proofs,earnings,tombstones});
-  packet.data.races=state.races;
-  packet.data.settings={driverId:state.settings?.driverId||null};
+  const syncMap=new Map(syncRows.map(row=>[row.id,row]));
+  const pending=(type,records)=>records.filter(record=>record&&!record.acknowledgedAt&&!(type==='DeliveryEvent'&&record.type==='DELIVERY_CANCELLED')&&needsSyncOperation(syncMap,type,record));
+  const packet=RotaMotoContract.packet({companyId,deviceId,app:'RotaMoto',events:[],deliveries:[],drivers:[],routes:[],
+    locationUpdates:pending('LocationPoint',locations),deliveryEvents:pending('DeliveryEvent',deliveryEvents),
+    proofs:pending('DeliveryProof',proofs),earnings:[],tombstones:[]});
+  for(const [type,key] of [['LocationPoint','locationUpdates'],['DeliveryEvent','deliveryEvents'],['DeliveryProof','proofs']])
+    packet.data[key]=packet.data[key].map(record=>withCanonicalBase(syncMap,type,record));
   return packet;
+}
+let syncCsrfToken=null;
+function stableSyncValue(value){if(Array.isArray(value))return `[${value.map(stableSyncValue).join(',')}]`;if(value&&typeof value==='object')return `{${Object.keys(value).filter(key=>key!=='sync'&&key!=='baseVersion').sort().map(key=>`${JSON.stringify(key)}:${stableSyncValue(value[key])}`).join(',')}}`;return JSON.stringify(value)}
+function syncOperationKey(type,record){return `operation:${type}:${record.eventId||record.id}`}
+function needsSyncOperation(syncMap,type,record){const saved=syncMap.get(syncOperationKey(type,record));return !saved||saved.status!=='accepted'&&saved.status!=='duplicate'||saved.fingerprint!==stableSyncValue(record)}
+function withCanonicalBase(syncMap,type,record){const saved=syncMap.get(syncOperationKey(type,record));return saved?.canonicalVersion?{...record,baseVersion:saved.canonicalVersion}:record}
+async function ensureSyncDeviceId(){let id=state.settings?.deviceId;if(!id){id=globalThis.crypto?.randomUUID?.()||RotaMotoContract.id('dev');state.settings={...state.settings,deviceId:id};await tx('meta','readwrite',s=>s.put({key:'settings',value:state.settings}))}return id}
+async function loginToSyncServer({email,password,companyId=null,apiBase='/api',fetchImpl=fetch}={}){if(typeof email!=='string'||typeof password!=='string'||!password)throw new Error('Credenciais de sessão obrigatórias.');const root=new URL(`${String(apiBase).replace(/\/$/u,'')}/`,location.href),path=`${root.pathname.replace(/\/$/u,'')}/identity/login`,response=await fetchImpl(path,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,...(companyId?{companyId}:{})})});let result={};try{result=await response.json()}catch(_){}if(!response.ok)throw new Error(result.error?.code||'LOGIN_FAILED');syncCsrfToken=result.csrfToken;return {userId:result.userId,companyId:result.companyId}}
+async function syncWithServer({apiBase='/api',csrfToken=syncCsrfToken,fetchImpl=fetch}={}){
+ if(typeof csrfToken!=='string'||!csrfToken)throw new Error('Sessão autenticada e token CSRF em memória são necessários para sincronizar.');
+ const root=new URL(`${String(apiBase).replace(/\/$/u,'')}/`,location.href),base=`${root.pathname.replace(/\/$/u,'')}/sync`,deviceId=await ensureSyncDeviceId();
+ const send=async(url,options={})=>{const response=await fetchImpl(url,{credentials:'include',...options});let body={};try{body=await response.json()}catch(_){}if(!response.ok)throw new Error(body.error?.code||'SYNC_HTTP_ERROR');return body};
+ await send(`${base}/installations/motoboy`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify({deviceId})});
+ const queueId=`sync-packet:${deviceId}`;let packet=await tx('outbox','readonly',s=>new Promise((resolve,reject)=>{const q=s.get(queueId);q.onsuccess=()=>resolve(q.result?.packet||null);q.onerror=()=>reject(q.error)}));
+ if(!packet){packet=await buildSyncPacket();await tx('outbox','readwrite',s=>s.put({id:queueId,type:'sync.packet',status:'pending',packet,createdAt:Date.now()}))}
+ const ack=await send(`${base}/push`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrfToken},body:JSON.stringify(packet)});
+ if(!Array.isArray(ack.operationResults))throw new Error('SYNC_ACK_INVALID');
+ await persistSyncAck(packet,ack.operationResults);await tx('outbox','readwrite',s=>s.delete(queueId));
+ let cursor=(await tx('syncState','readonly',s=>new Promise((resolve,reject)=>{const q=s.get('pull:cursor');q.onsuccess=()=>resolve(q.result?.value||null);q.onerror=()=>reject(q.error)})));
+ let pulled=0,hasMore=true,pages=0;
+ while(hasMore&&pages++<100){const query=new URLSearchParams({deviceId,limit:'100'});if(cursor)query.set('cursor',cursor);const page=await send(`${base}/pull?${query}`);await tx(['inbox','syncState'],'readwrite',stores=>{const inbox=stores.objectStore('inbox'),sync=stores.objectStore('syncState');for(const event of page.events||[]){inbox.put({id:`server:${event.eventId}`,event,status:'canonical-cached',receivedAt:Date.now()});const cacheId=`canonical:${event.entity}:${event.entityId}`,request=sync.get(cacheId);request.onsuccess=()=>{const prior=request.result,version=Number(event.payload?.version||0);if(!prior||version>Number(prior.canonicalVersion||0)){const payload=event.type==='CANONICAL_RECORD_TOMBSTONED'?{...(prior?.payload||{}),...event.payload,deleted:true}:event.payload;sync.put({id:cacheId,entity:event.entity,canonicalId:event.entityId,canonicalVersion:version,payload,updatedAt:Date.now()})}}}if(page.nextCursor)sync.put({id:'pull:cursor',value:page.nextCursor});});pulled+=(page.events||[]).length;cursor=page.nextCursor||cursor;hasMore=!!page.hasMore}
+ return {packetId:packet.packetId,operationResults:ack.operationResults,pulled,cursor,hasMore};
+}
+async function persistSyncAck(packet,results){
+ const records=new Map();for(const [key,type] of [['locationUpdates','LocationPoint'],['deliveryEvents','DeliveryEvent'],['proofs','DeliveryProof']])for(const record of packet.data[key]||[])records.set(`${type}:${record.eventId||record.id}`,record);
+ await tx(['syncState','outbox','deliveryEvents','locations','proofs'],'readwrite',stores=>{for(const result of results){const row=records.get(`${result.entity}:${result.localId}`);const accepted=['accepted','duplicate'].includes(result.status);stores.objectStore('syncState').put({id:syncOperationKey(result.entity,{id:result.localId}),entity:result.entity,localId:result.localId,status:result.status,error:result.error||null,canonicalId:result.canonicalId||null,canonicalVersion:result.canonicalVersion||null,fingerprint:accepted&&row?stableSyncValue(row):null,updatedAt:Date.now()});if(!accepted||!row)continue;const store=result.entity==='DeliveryEvent'?'deliveryEvents':result.entity==='LocationPoint'?'locations':'proofs';const request=stores.objectStore(store).get(row.id||row.eventId);request.onsuccess=()=>{if(request.result){request.result.acknowledgedAt=Date.now();request.result.canonicalId=result.canonicalId||null;stores.objectStore(store).put(request.result)}};if(result.entity==='DeliveryEvent'){const pending=stores.objectStore('outbox').get(row.id||row.eventId);pending.onsuccess=()=>{if(pending.result){pending.result.status='acknowledged';pending.result.acknowledgedAt=Date.now();stores.objectStore('outbox').put(pending.result)}}}}});
 }
 function downloadSyncPacket(packet){
   const blob=new Blob([JSON.stringify(packet,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`rotamoto-sync-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);
@@ -663,6 +691,7 @@ $('#clearData').onclick=()=>modal('Apagar histórico','Isso remove as corridas, 
 function renderAll(){renderHome();renderRaces();renderSettings();if($('#routesScreen').classList.contains('active')){restoreRouteOrder();renderRouteOrder(optimizedOrder);renderRouteGroups();renderRouteInfo(optimizedOrder);evaluateManualOrder();renderRoutePreview(optimizedOrder);setTimeout(()=>{if($('#routesScreen').classList.contains('active')&&optimizedOrder.length)requestRoadDistances(optimizedOrder)},60)}if($('#mapScreen').classList.contains('active')){restoreRouteOrder();renderRouteMap();renderWorkNext()}if($('#earnings').classList.contains('active'))renderEarnings();applyLanguage()}
 async function runDiagnostics(){const el=$('#diagnosticStatus');if(el)el.innerHTML='<span class="diagItem warn">Verificando GPS…</span>';const gpsCheck=await (async()=>{try{const p=await getPosition();setDriverPosition(p.coords.latitude,p.coords.longitude,p.coords.accuracy);return true}catch(e){return false}})();const checks=[['Armazenamento local',!!dbReady],['GPS',gpsCheck],['Corridas salvas',Array.isArray(state.races)],['Configurações',!!state.settings],['Modo offline',navigator.onLine||'Sem internet — dados locais disponíveis']];const ok=checks.every(x=>x[1]===true||x[1]===undefined||typeof x[1]==='string');if(el)el.innerHTML=checks.map(x=>`<span class="diagItem ${x[1]===true?'ok':'warn'}">${x[0]}: ${x[1]===true?'OK':typeof x[1]==='string'?x[1]:'aguardando'}</span>`).join('');toast(ok?'Verificação concluída.':'Verificação concluída com itens para revisar.',ok?'ok':'error')}$('#diagnosticBtn')?.addEventListener('click',runDiagnostics);const systemThemeMedia=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;if(systemThemeMedia){const onSystemThemeChange=()=>{if((state.settings||defaults).theme==='auto')applyTheme()};systemThemeMedia.addEventListener?.('change',onSystemThemeChange);systemThemeMedia.addListener?.(onSystemThemeChange)}
 
+window.RotaMotoSync.setSession=csrfToken=>{syncCsrfToken=typeof csrfToken==='string'?csrfToken:null};window.RotaMotoSync.loginToServer=loginToSyncServer;window.RotaMotoSync.syncWithServer=syncWithServer;
 (async()=>{await loadDB();await normalizeMotoData();runUiIntegrityCheck();applyTheme();renderAll();syncRaceFilterUI();syncEarningsPeriodUI();show(state.settings.autoWork&&routeRaces().length?'mapScreen':'home')})();
 
 window.addEventListener('offline',()=>{setRouteStatus('Sem internet. Corridas e configurações continuam salvas no aparelho; mapas/rotas externos podem ficar indisponíveis.')});window.addEventListener('online',()=>{setRouteStatus('Conexão restaurada.');toast('Conexão com a internet restaurada.')});

@@ -44,7 +44,7 @@ assert(motoSource.includes('for(const tombstone of tombstones)t.objectStore(\'to
 assert(motoSource.includes("const storedEvent={...deliveryEvent,id:deliveryEvent.eventId};t.objectStore('deliveryEvents').put(storedEvent);t.objectStore('outbox').put({...storedEvent,status:'pending'})"));
 assert(motoSource.includes('await persistOnly(opts)'));
 assert(motoSource.includes("function deleteRiderRace(id)"));
-assert(motoSource.includes('const deliveries=state.races.filter(r=>!r.deleted).map'));
+assert(motoSource.includes('events:[],deliveries:[],drivers:[],routes:[]'),'Motoboy must not publish canonical Delivery or administrative data');
 assert(motoSource.includes("await tx(['races','deliveries','meta'],'readwrite',t=>"),'startup projection normalization is one transaction');
 assert(motoSource.includes('function commitRouteOrder(ids){return commitRiderCommand('),'route-order settings use the shared serialized command queue');
 const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculateRoadDistances(rs){'),motoSource.indexOf('\nfunction requestRoadDistances'));
