@@ -1,5 +1,5 @@
 'use strict';
-const DB_NAME='RotaMotoDB',DB_VERSION=5,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const DB_NAME='RotaMotoDB',DB_VERSION=RotaMotoStorageSchema.version,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const defaults={minFee:7,costKm:.65,tiers:[{max:3,rate:2},{max:6,rate:1.8},{max:10,rate:1.6},{max:null,rate:1.5}],googleLimit:4,wazeLimit:1,restaurantName:'',restaurantPhone:'',restaurantNote:'',driverName:'',trackingEnabled:true,routeOrderIds:[],theme:'auto',accent:'#16a34a',mapTheme:'standard',autoWork:false,addressMode:'full',autoNext:true,autoReorder:true,dailyGoal:0,dayClosures:[],highContrast:false,arrivalRadiusM:10,language:'pt',oneHandedMode:false,pendingAlertMinutes:30,pausedAlertMinutes:15,alertDisplaySeconds:8,alertRepeatMinutes:30,returnChargeEnabled:true,returnChargeMode:'full',returnAutoLink:true};
 let state={races:[],settings:structuredClone(defaults)},raceSearch='',historyPeriod='all',editingId=null,currentCoords=null,formMap=null,formMarker=null,map=null,mapMarkers=[],optimizedOrder=[],currentFilter='all',currentPeriod='today',customStart='',customEnd='',dbReady=null,currentWazeIndex=0,watchId=null,driverMarker=null,lastGps=null,routeFullscreen=false,selectedRouteIndex=0,workFocusIndex=0,driverAddress='',driverAddressCoords=null,driverAddressBusy=false,driverAddressSeq=0,saveRaceBusy=false,workOverviewUsed=false,lastMovementAt=null,alertState={pending:{},paused:{}},gpsTrackingEnabled=true;
 let nominatimCache=new Map(),lastNominatimRequestAt=0,routeDurationSeconds=0;
@@ -32,7 +32,7 @@ function openDB(){
   let settled=false;
   const fail=error=>{if(settled)return;settled=true;reject(error)};
   const request=indexedDB.open(DB_NAME,DB_VERSION);
-  request.onupgradeneeded=()=>{const d=request.result;if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta',{keyPath:'key'});if(!d.objectStoreNames.contains('races')){const s=d.createObjectStore('races',{keyPath:'id'});s.createIndex('status','status');s.createIndex('createdAt','createdAt')}for(const name of ['deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','tombstones','syncState'])if(!d.objectStoreNames.contains(name))d.createObjectStore(name,{keyPath:'id'});};
+  request.onupgradeneeded=event=>{try{RotaMotoStorageSchema.upgrade(request.result,request.transaction,event.oldVersion,event.newVersion)}catch(error){try{request.transaction?.abort()}catch(_){}fail(error)}};
   request.onsuccess=()=>{const connection=request.result;if(settled){connection.close();return}settled=true;connection.onversionchange=()=>{connection.close();if(dbReady===opening)dbReady=null};resolve(connection)};
   request.onerror=()=>fail(request.error||new Error('Falha ao abrir o banco local'));
   request.onblocked=()=>fail(new Error('A atualização do banco local está bloqueada por outra aba.'));
