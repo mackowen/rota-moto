@@ -486,9 +486,10 @@ function scheduleRouteRecalc(force=false){
   },900);
 }
 function gpsMovedEnough(){if(!lastRerouteGps)return true;return distance(lastRerouteGps,lastGps)>=0.05}
-function show(id){$$('.screen').forEach(x=>x.classList.toggle('active',x.id===id));$$('[data-screen]').forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle('active',active);x.setAttribute('aria-current',active?'page':'false')});if(id==='home')renderHome();if(id==='races')renderRaces();window.scrollTo(0,0);document.querySelector('main')?.scrollTo(0,0);if(id!=='capture')stopCamera();if(id!=='qrScan')stopQrCamera();if(id==='routesScreen'){restoreRouteOrder();workOverviewUsed=false;setTimeout(()=>{initRoutePreviewMap();startTracking();const rs=optimizedOrder.length?optimizedOrder:routeRaces();renderRouteOrder(rs);renderRouteGroups();renderRouteInfo(rs);evaluateManualOrder();renderRoutePreview(rs);setTimeout(()=>{routePreviewMap?.invalidateSize();if(rs.length)requestRoadDistances(rs)},120)},80)}else if(id==='mapScreen'){workOverviewUsed=false;setTimeout(()=>{initMap();renderRouteMap();startTracking();renderWorkNext();setTimeout(()=>map?.invalidateSize(),100)},100)}else stopTracking();if(id==='earnings')renderEarnings();if(id==='form')setTimeout(()=>formMap?.invalidateSize(),100)}
+function show(id){$$('.screen').forEach(x=>x.classList.toggle('active',x.id===id));$$('[data-screen]').forEach(x=>{const active=x.dataset.screen===id;x.classList.toggle('active',active);x.setAttribute('aria-current',active?'page':'false')});if(id==='home')renderHome();if(id==='races')renderRaces();window.scrollTo(0,0);document.querySelector('main')?.scrollTo(0,0);if(id!=='capture'){stopCamera();if(window.ocrBusy&&ocrAbortController)ocrAbortController.abort();clearCaptureImage();lastCapturedFile=null}if(id!=='form'&&window._ocrDraft){window._ocrDraft=null;$('#ocrReview').hidden=true;$('#ocrReview').replaceChildren()}if(id!=='qrScan')stopQrCamera();if(id==='routesScreen'){restoreRouteOrder();workOverviewUsed=false;setTimeout(()=>{initRoutePreviewMap();startTracking();const rs=optimizedOrder.length?optimizedOrder:routeRaces();renderRouteOrder(rs);renderRouteGroups();renderRouteInfo(rs);evaluateManualOrder();renderRoutePreview(rs);setTimeout(()=>{routePreviewMap?.invalidateSize();if(rs.length)requestRoadDistances(rs)},120)},80)}else if(id==='mapScreen'){workOverviewUsed=false;setTimeout(()=>{initMap();renderRouteMap();startTracking();renderWorkNext();setTimeout(()=>map?.invalidateSize(),100)},100)}else stopTracking();if(id==='earnings')renderEarnings();if(id==='form')setTimeout(()=>formMap?.invalidateSize(),100)}
 document.addEventListener('click',e=>{const nav=e.target.closest('[data-screen]');if(nav){e.preventDefault();e.stopPropagation();const id=nav.dataset.screen;if(id)show(id);return}const back=e.target.closest('[data-back]');if(back){e.preventDefault();e.stopPropagation();const id=back.dataset.back||'home';show(id);return}},true);$('#settingsBtn').onclick=()=>show('settings');$('#newRaceBtn').onclick=()=>openCapture();$('#scanDeliveryQrBtn').onclick=()=>openDeliveryQrScanner();$('#cancelQrScan').onclick=()=>{stopQrCamera();show('home')};$('#newRaceFromRaces').onclick=()=>openCapture();$('#openRaces').onclick=()=>{currentFilter='all';show('races');renderRaces()};$('#mapWorkBtn').onclick=()=>show('mapScreen');$('#openWorkBtn').onclick=()=>show('mapScreen');$('#backToRoutes').onclick=()=>show('routesScreen');$('#earningsBtn').onclick=()=>show('earnings');$$('.miniCard').forEach(b=>b.onclick=()=>{currentFilter=b.dataset.filter;show('races');renderRaces()});function syncRaceFilterUI(){const buttons=$$('.filterTabs [data-filter]');buttons.forEach(b=>{const active=b.dataset.filter===currentFilter;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active?'true':'false')})}$$('.filterTabs button').forEach(b=>b.onclick=()=>{currentFilter=b.dataset.filter;syncRaceFilterUI();renderRaces()});$('#raceSearch').oninput=e=>{raceSearch=e.target.value;renderRaces()};$$('.historyPeriod button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.history===historyPeriod));b.onclick=()=>{historyPeriod=b.dataset.history;$$('.historyPeriod button').forEach(x=>{const active=x===b;x.classList.toggle('active',active);x.setAttribute('aria-pressed',String(active))});renderRaces()}});$('#closeDayBtn').onclick=closeDaySummary;function syncEarningsPeriodUI(){const buttons=$$('.periodTabs [data-period]');buttons.forEach(b=>{const active=b.dataset.period===currentPeriod;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active?'true':'false')})}$$('.periodTabs button').forEach(b=>b.onclick=()=>{currentPeriod=b.dataset.period;syncEarningsPeriodUI();$('#customPeriod').hidden=currentPeriod!=='custom';renderEarnings()});$('#applyCustomPeriod').onclick=()=>{customStart=$('#customStart').value;customEnd=$('#customEnd').value;if(!customStart||!customEnd||customStart>customEnd){toast('Escolha um período válido.','error');return}currentPeriod='custom';syncEarningsPeriodUI();$('#customPeriod').hidden=false;renderEarnings()};
 let cameraStream=null;
+let captureImageUrl=null,ocrAbortController=null;
 let lastCapturedFile=null;
 let routePreviewMap=null,routePreviewMarkers=[],previewDriverMarker=null;
 let routeRecalcTimer=null,lastRerouteGps=null,routeRecalcBusy=false,roadDistanceQueue=Promise.resolve(),roadDistanceSeq=0;
@@ -503,7 +504,7 @@ async function openCapture(){
   $('#ocrStatus').textContent='Abrindo a câmera…';
   try{
     if(!navigator.mediaDevices?.getUserMedia)throw Error('getUserMedia indisponível');
-    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false});
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1440}},audio:false});
     preview.srcObject=cameraStream;preview.style.display='block';
     await new Promise(resolve=>{if(preview.readyState>=2)return resolve();preview.addEventListener('loadeddata',resolve,{once:true});setTimeout(resolve,1200)});
     const track=cameraStream.getVideoTracks?.()[0];
@@ -536,8 +537,8 @@ function resetCapturePreview(){
 }
 function showCapturedFrame(file){
   const s=$('#captureSnapshot'),v=$('#cameraPreview'),b=$('#captureBadge');
-  const url=URL.createObjectURL(file);
-  s.onload=()=>URL.revokeObjectURL(url);s.src=url;s.hidden=false;v.style.display='none';b.hidden=false;
+  if(captureImageUrl)URL.revokeObjectURL(captureImageUrl);captureImageUrl=URL.createObjectURL(file);
+  s.onload=()=>{if(captureImageUrl){URL.revokeObjectURL(captureImageUrl);captureImageUrl=null}};s.src=captureImageUrl;s.hidden=false;v.style.display='none';b.hidden=false;
   $('#retryPhoto').hidden=false;
   $('#captureFlash').classList.remove('active');void $('#captureFlash').offsetWidth;$('#captureFlash').classList.add('active');
 }
@@ -556,87 +557,64 @@ $('#takePhoto').onclick=captureFromCamera;
 $('#choosePhoto').onclick=()=>$('#galleryInput').click();
 $('#galleryInput').onchange=e=>{const f=e.target.files[0];if(f){lastCapturedFile=f;showCapturedFrame(f);runOCR(f)}e.target.value=''};
 $('#photoInput').onchange=e=>{const f=e.target.files[0];if(f){lastCapturedFile=f;showCapturedFrame(f);runOCR(f)}e.target.value=''};
-$('#manualFromCapture').onclick=()=>{stopCamera();openForm()};
-$('#retryPhoto').onclick=()=>{lastCapturedFile=null;resetCapturePreview();$('#retryPhoto').hidden=true;openCapture()};
+$('#manualFromCapture').onclick=()=>{stopCamera();clearCaptureImage();lastCapturedFile=null;openForm()};
+$('#retryPhoto').onclick=()=>{lastCapturedFile=null;clearCaptureImage();resetCapturePreview();$('#retryPhoto').hidden=true;openCapture()};
 async function runOCR(file){
   if(window.ocrBusy)return;
   if(!file){toast('Nenhuma foto foi capturada.','error');return}
-  lastCapturedFile=file;
-  window.ocrBusy=true;
+  if(!window.RotaMotoOcrPipeline){$('#ocrStatus').textContent='Leitor local indisponível. Você pode preencher manualmente.';return}
+  lastCapturedFile=file;window.ocrBusy=true;ocrAbortController=new AbortController();
   $('#takePhoto').disabled=true;$('#choosePhoto').disabled=true;$('#manualFromCapture').disabled=true;$('#retryPhoto').disabled=true;
-  $('#ocrStatus').textContent='Foto capturada. Preparando leitura…';$('#ocrBar').style.width='0';
+  $('#ocrStatus').textContent='Imagem local. Preparando leitura…';$('#ocrBar').style.width='0';
   try{
-    if(!window.Tesseract||typeof Tesseract.createWorker!=='function')throw Error('Biblioteca Tesseract.js não carregou');
-    const worker=await Tesseract.createWorker('por',1,{logger:m=>{if(typeof m.progress==='number')$('#ocrBar').style.width=Math.round(m.progress*100)+'%';if(m.status)$('#ocrStatus').textContent=`Lendo a comanda… ${Math.round((m.progress||0)*100)}%`}});
-    await worker.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300',tessedit_pageseg_mode:'6',language_model_penalty_non_freq_dict_word:'0.05'});
-    const variants=[false,true,'adaptive','sharp'];let best='';let bestScore=-1;
-    for(let i=0;i<variants.length;i++){
-      $('#ocrStatus').textContent=`Lendo a comanda… tentativa ${i+1}/${variants.length}`;
-      const result=await worker.recognize(await preprocessImage(file,variants[i]));
-      const text=(result.data?.text||'').trim();
-      const score=ocrQualityScore(text);
-      if(score>bestScore){bestScore=score;best=text}
-    }
-    await worker.terminate();
-    if(!best)throw Error('OCR sem texto');
-    fillFromOCR(best);show('form');editingId=null;$('#formTitle').textContent='Nova corrida — confira a leitura';$('#deleteRace').hidden=true;$('#coordStatus').textContent='Localização ainda não confirmada';updateFormCalc();$('#ocrStatus').textContent='Leitura concluída. Confira os campos e confirme o endereço no mapa.';toast('Comanda lida. Confira os campos.');
-  }catch(e){console.error('OCR',e);$('#ocrStatus').textContent='A leitura automática não conseguiu identificar tudo. Você pode corrigir ou preencher manualmente.';toast('OCR teve dificuldade com a foto.','error')}finally{window.ocrBusy=false;$('#takePhoto').disabled=false;$('#choosePhoto').disabled=false;$('#manualFromCapture').disabled=false;$('#retryPhoto').disabled=false}
+    const draft=await RotaMotoOcrPipeline.analyzeImage(file,{signal:ocrAbortController.signal,onProgress:event=>{
+      const progress=Math.round((event.progress||0)*100);$('#ocrBar').style.width=`${progress}%`;
+      $('#ocrStatus').textContent=event.phase==='preprocess'?'Ajustando imagem neste aparelho…':`Lendo localmente… ${progress}%`;
+    }});
+    if(ocrAbortController.signal.aborted)return;
+    window._ocrDraft=draft;fillFromOCR(draft);renderOcrReview(draft);show('form');editingId=null;
+    $('#formTitle').textContent='Nova corrida — revise a leitura';$('#deleteRace').hidden=true;$('#coordStatus').textContent='Localização ainda não confirmada';updateFormCalc();
+    $('#ocrStatus').textContent=`Leitura local concluída em ${draft.engine.durationMs} ms. Revise os campos antes de confirmar.`;toast('Leitura pronta para revisão.');
+    clearCaptureImage();lastCapturedFile=null;
+  }catch(error){
+    if(error?.code==='OCR_CANCELLED')return;
+    const messages={OCR_IMAGE_SIZE:'Imagem muito grande. Escolha uma foto menor.',OCR_IMAGE_TYPE:'Formato não suportado. Use JPEG, PNG ou WebP.',OCR_IMAGE_INVALID:'Não foi possível abrir essa imagem.',OCR_ENGINE_UNAVAILABLE:'OCR local indisponível. Preencha os dados manualmente.',OCR_NO_TEXT:'Não encontrei texto legível. Tente outra foto ou preencha manualmente.',OCR_CANVAS_UNAVAILABLE:'Este navegador não oferece processamento local de imagem.',OCR_IMAGE_UNSUPPORTED:'Este navegador não oferece processamento local de imagem.'};
+    $('#ocrStatus').textContent=messages[error?.code]||'Não foi possível ler a comanda neste aparelho. Você pode tentar outra foto ou preencher manualmente.';toast('OCR local não concluiu.','error');lastCapturedFile=null;
+  }finally{window.ocrBusy=false;ocrAbortController=null;$('#takePhoto').disabled=false;$('#choosePhoto').disabled=false;$('#manualFromCapture').disabled=false;$('#retryPhoto').disabled=false}
 }
-function ocrQualityScore(text){const t=text||'';let s=Math.min(40,t.length/8);if(/endereço\s*:/i.test(t))s+=25;if(/rua\b|avenida\b|alameda\b|travessa\b/i.test(t))s+=15;if(/valor\s*total/i.test(t))s+=20;if(/bairro\s*:/i.test(t))s+=10;if(/cidade\s*:/i.test(t))s+=10;if(/r\$\s*\d+[,.]\d{2}/i.test(t))s+=10;return s}
-async function preprocessImage(file,mode=false){
-  const bitmap=await createImageBitmap(file);
-  const marginX=Math.round(bitmap.width*.06),marginY=Math.round(bitmap.height*.015);
-  const cropW=Math.max(1,bitmap.width-marginX*2),cropH=Math.max(1,bitmap.height-marginY*2);
-  const max=3000,scale=Math.min(2,max/Math.max(cropW,cropH));
-  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(cropW*scale));c.height=Math.max(1,Math.round(cropH*scale));
-  const ctx=c.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(bitmap,marginX,marginY,cropW,cropH,0,0,c.width,c.height);bitmap.close?.();
-  const img=ctx.getImageData(0,0,c.width,c.height),d=img.data,hist=new Uint32Array(256);
-  for(let i=0;i<d.length;i+=4){const y=Math.max(0,Math.min(255,Math.round(.299*d[i]+.587*d[i+1]+.114*d[i+2])));hist[y]++}
-  const total=d.length/4;let lo=0,hi=255,acc=0;for(let i=0;i<256;i++){acc+=hist[i];if(acc>total*.01){lo=i;break}}acc=0;for(let i=255;i>=0;i--){acc+=hist[i];if(acc>total*.01){hi=i;break}}
-  const span=Math.max(30,hi-lo);
-  for(let i=0;i<d.length;i+=4){let y=Math.round((.299*d[i]+.587*d[i+1]+.114*d[i+2]-lo)*255/span);y=Math.max(0,Math.min(255,y));if(mode===true)y=y>155?255:0;else if(mode==='adaptive'){const local=y;y=local>150?255:local<105?0:Math.round((local-105)*255/45)}d[i]=d[i+1]=d[i+2]=y}
-  ctx.putImageData(img,0,0);
-  if(mode==='sharp'){
-    const src=ctx.getImageData(0,0,c.width,c.height),out=ctx.createImageData(c.width,c.height),a=src.data,b=out.data,w=c.width,h=c.height;
-    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const p=(y*w+x)*4;const v=5*a[p]-a[p-4]-a[p+4]-a[p-w*4]-a[p+w*4];const q=Math.max(0,Math.min(255,v));b[p]=b[p+1]=b[p+2]=q;b[p+3]=255}
-    ctx.putImageData(out,0,0)
-  }
-  return c;
+const OCR_FIELD_LABELS={orderNo:'Número do pedido',origin:'Origem',customer:'Cliente',phone:'Telefone',address:'Endereço',number:'Número',complement:'Complemento',neighborhood:'Bairro',city:'Cidade',state:'UF',postalCode:'CEP',reference:'Referência',items:'Itens',notes:'Observações',value:'Valor',paymentMethod:'Pagamento'};
+const OCR_FIELD_INPUTS={orderNo:'fOrder',customer:'fClient',phone:'fPhone',address:'fAddress',neighborhood:'fNeighborhood',city:'fCity',state:'fState',postalCode:'fPostalcode',items:'fItems',notes:'fNotes',value:'fValue'};
+function fillFromOCR(draft){
+  const formValues={orderNo:$('#fOrder'),customer:$('#fClient'),phone:$('#fPhone'),address:$('#fAddress'),neighborhood:$('#fNeighborhood'),city:$('#fCity'),state:$('#fState'),postalCode:$('#fPostalcode'),value:$('#fValue'),items:$('#fItems'),notes:$('#fNotes')};
+  for(const [field,input]of Object.entries(formValues)){const candidate=draft.fields[field];if(input&&candidate?.status==='high'&&candidate.value){input.value=field==='items'?candidate.value:field==='value'?candidate.value:candidate.value;if(field==='items'&&candidate.value.includes('\n'))input.value=candidate.value}}
+  window._ocrItems=parseItemsText($('#fItems').value);
+  for(const [field,id]of Object.entries(OCR_FIELD_INPUTS)){const input=$(`#${id}`),candidate=draft.fields[field];if(input){input.closest('label')?.classList.toggle('ocr-field-high',candidate?.status==='high');input.closest('label')?.classList.toggle('ocr-field-review',['review','conflict'].includes(candidate?.status));input.dataset.ocrField=field}}
 }
-function fillFromOCR(text){
-  const lines=text.split(/\n+/).map(x=>x.replace(/[|¦]+/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
-  const clean=s=>s.replace(/^[^A-Za-zÀ-ÿ0-9]+/,'').trim();
-  const phoneLines=lines.filter(x=>/^(?:telefone|tel\.?|fone)\s*:/i.test(x)||/\b0800\s*\d{3,4}\s*\d{4}\b/i.test(x));const phoneSource=phoneLines.join('\n')||text;const phoneCandidates=[...phoneSource.matchAll(/(?:\+?55\s*)?(?:0800\s*\d{3,4}\s*\d{4}|\(?\d{2}\)?\s*(?:9\s*)?\d{4}[-.\s]?\d{4})/g)].map(m=>m[0].trim());
-  const phone=phoneCandidates.sort((a,b)=>b.replace(/\D/g,'').length-a.replace(/\D/g,'').length)[0]||'';
-  const totalLine=lines.find(x=>/valor\s*total/i.test(x));
-  const moneyIn=s=>{const ms=[...s.matchAll(/(?:R\$\s*)?\d{1,5}[,.]\d{2}/g)];return ms.length?ms[ms.length-1][0].replace(/[^0-9,.]/g,''):''};
-  let money=totalLine?moneyIn(totalLine):'';
-  if(!money){const candidates=lines.filter(x=>/\btotal\b|\bvalor\b/i.test(x)).map(moneyIn).filter(Boolean);money=candidates[candidates.length-1]||''}
-  const addrLine=lines.find(x=>/\bendereço\s*:/i.test(x))||lines.find(x=>/\b(rua|avenida|av\.?|alameda|travessa|estrada|praça|praca|rodovia|r\.)\b/i.test(x)&&/\d/.test(x))||'';
-  let addr=addrLine.replace(/^.*?endereço\s*:\s*/i,'').trim();
-  const compLines=lines.filter(x=>/^(comp|complemento)\s*:/i.test(x));
-  const compText=compLines.map(x=>x.replace(/^\s*(comp|complemento)\s*:\s*/i,'').trim()).filter(Boolean).join(' ');
-  const neighborhood=(lines.find(x=>/^bairro\s*:/i.test(x))||'').replace(/^bairro\s*:\s*/i,'').trim();const cityLine=lines.find(x=>/^cidade\s*:/i.test(x))||'';const cityMatch=cityLine.match(/^cidade\s*:\s*(.+?)(?:\s*-\s*([A-Z]{2}))?(?:\s*-?\s*CEP\s*:?\s*\d{5}-?\d{3})?$/i);const ocrCity=cityMatch?.[1]?.trim()||'';const ocrState=cityMatch?.[2]?.toUpperCase()||'';const ocrPostal=(cityLine.match(/\b\d{5}-?\d{3}\b/)||[])[0]||'';
-  const refLine=lines.find(x=>/^(ponto\s*de\s*)?refer[eê]ncia\s*:/i.test(x));
-  const reference=refLine?.replace(/^.*?refer[eê]ncia\s*:\s*/i,'').trim()||'';
-  const itemStart=lines.findIndex(x=>/itens\s+do\s+pedido/i.test(x));
-  const stopRe=/^\*?\s*(pagamento|forma de pagamento|valor total|taxa de servi[cç]o|troco|subtotal)\b/i;
-  const itemLines=itemStart>=0?lines.slice(itemStart+1).filter(x=>!stopRe.test(x)&&!/^[-_=]{3,}$/.test(x)&&/\d/.test(x)):[];
-  const parsedItems=itemLines.map(line=>{const m=line.match(/^(?:x|qtd|quantidade)?\s*(\d+)\s*[x×-]?\s*(.+)$/i);return {quantity:m?Number(m[1]):1,name:(m?m[2]:line).trim(),addons:'',notes:''}});const items=itemLines.join(' | ');
-  const notes=[compText&&`Complemento: ${compText}`,reference&&`Ponto de referência: ${reference}`,items&&`Itens: ${items}`].join('\n');
-  const named=lines.find(x=>/^(cliente|nome|destinat[aá]rio)\s*[:\-]/i.test(x));
-  const rejected=/^(data|localizador|id|comp|complemento|bairro|cidade|endereço|telefone|tel|itens|pagamento|valor|taxa|pedido|mesa|forma|online|pix|observa|cep)/i;
-  const name=named?.split(/[:\-]/).slice(1).join(':').trim()||lines.map(clean).filter(x=>!rejected.test(x)&&/[A-Za-zÀ-ÿ]/.test(x)&&x.split(/\s+/).length>=2&&!/\d{3,}/.test(x)&&!/R\$|\bCEP\b/i.test(x)).sort((a,b)=>{const sa=(/[A-ZÀ-Ý][a-zà-ÿ]+\s+[A-ZÀ-Ý][a-zà-ÿ]+/.test(a)?4:0)+(a.length<45?2:0);const sb=(/[A-ZÀ-Ý][a-zà-ÿ]+\s+[A-ZÀ-Ý][a-zà-ÿ]+/.test(b)?4:0)+(b.length<45?2:0);return sb-sa})[0]||'';
-  const orderMatch=text.match(/(?:pedido|comanda|ordem)\s*[:#-]?\s*([A-Z0-9][A-Z0-9\/-]{1,})/i);const order=orderMatch?.[1]||'';
-  $('#fClient').value=name;$('#fPhone').value=phone;$('#fAddress').value=addr.replace(/,?\s*(?:comp|complemento)\s*:.*/i,'').trim();$('#fNeighborhood').value=neighborhood;if($('#fCity'))$('#fCity').value=ocrCity;if($('#fState'))$('#fState').value=ocrState;if($('#fPostalcode'))$('#fPostalcode').value=ocrPostal;$('#fValue').value=money.replace(',','.');$('#fOrder').value=order;$('#fItems').value=itemsToText(parsedItems);$('#fNotes').value=notes;window._ocrItems=parsedItems;
+function renderOcrReview(draft){
+  const root=$('#ocrReview');if(!root)return;
+  const rows=Object.entries(draft.fields).filter(([field,item])=>item.status!=='missing'||['address','phone','value','paymentMethod'].includes(field)).map(([field,item])=>{
+    const status=item.status==='high'?'Alta confiança':item.status==='conflict'?'Conflito — escolha manualmente':item.status==='review'?'Confira antes de usar':'Ausente';
+    const candidates=item.candidates.slice(0,3).map((candidate,index)=>`<div class="ocr-candidate"><span>${esc(candidate.value)}</span><small>${Math.round(candidate.confidence*100)}% · ${esc(candidate.provenance)}</small>${OCR_FIELD_INPUTS[field]||['number','complement','reference','paymentMethod'].includes(field)?`<button type="button" class="smallBtn" data-ocr-apply="${esc(field)}" data-ocr-index="${index}">Usar este valor</button>`:''}</div>`).join('');
+    return `<li class="ocr-review-row" data-confidence="${esc(item.status)}"><div><b>${esc(OCR_FIELD_LABELS[field]||field)}</b><span class="ocr-state">${esc(status)}</span></div>${candidates||'<small>Não detectado; confira manualmente se necessário.</small>'}${item.warnings.map(warning=>`<small class="ocr-warning">${esc(warning)}</small>`).join('')}</li>`;
+  }).join('');
+  root.hidden=false;root.innerHTML=`<section class="ocrReviewCard"><span class="eyebrow">Processado neste aparelho · imagem não enviada</span><h2>Revise a leitura</h2><p>Campos pré-preenchidos continuam sendo sugestões. Endereço, telefone, valor e pagamento precisam ser conferidos.</p><ul>${rows}</ul><label class="ocrConfirm"><input id="ocrReviewConfirmed" type="checkbox"><span>Revisei e confirmei os dados desta comanda.</span></label></section>`;
+  root.querySelectorAll('[data-ocr-apply]').forEach(button=>button.addEventListener('click',()=>applyOcrCandidate(button.dataset.ocrApply,Number(button.dataset.ocrIndex),draft)));
 }
+function applyOcrCandidate(field,index,draft){
+  const candidate=draft.fields[field]?.candidates?.[index];if(!candidate)return;
+  if(field==='number'){const address=$('#fAddress'),current=address.value.trim(),suffix=/(?:,\s*|\s+)(?:n[º°.]?\s*)?\d{1,5}[A-Za-z]?$/iu;address.value=current?`${current.replace(suffix,'').trim()}, ${candidate.value}`:candidate.value;address.closest('label')?.classList.add('ocr-field-edited');address.dispatchEvent(new Event('input',{bubbles:true}));return}
+  const inputId=OCR_FIELD_INPUTS[field],input=inputId?$(`#${inputId}`):null;
+  if(input){input.value=candidate.value;if(field==='items')window._ocrItems=parseItemsText(input.value);input.closest('label')?.classList.remove('ocr-field-review');input.closest('label')?.classList.add('ocr-field-edited');input.dispatchEvent(new Event('input',{bubbles:true}));return}
+  if(['complement','reference','paymentMethod'].includes(field)){const notes=$('#fNotes'),label=OCR_FIELD_LABELS[field];notes.value=[notes.value.trim(),`${label}: ${candidate.value}`].filter(Boolean).join('\n');notes.dispatchEvent(new Event('input',{bubbles:true}))}
+}
+function clearCaptureImage(){const image=$('#captureSnapshot');if(captureImageUrl){URL.revokeObjectURL(captureImageUrl);captureImageUrl=null}if(image){image.onload=null;image.removeAttribute('src');image.hidden=true}}
 function itemsToText(items){return (Array.isArray(items)?items:[]).map(it=>`${it.quantity&&it.quantity!==1?it.quantity+'x ':''}${it.name||it.text||''}${it.addons?' — '+it.addons:''}${it.notes?' — '+it.notes:''}`.trim()).filter(Boolean).join('\n')}
 function parseItemsText(text){return String(text||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).map(line=>{const m=line.match(/^(\d+)\s*[x×-]\s*(.+)$/);return {quantity:m?Number(m[1]):1,name:(m?m[2]:line).trim(),addons:'',notes:''}})}
-function resetForm(){editingId=null;window._ocrItems=null;currentCoords=null;if($('#fItems'))$('#fItems').value='';if($('#fCity'))$('#fCity').value='';if($('#fState'))$('#fState').value='';if($('#fPostalcode'))$('#fPostalcode').value='';$('#addressCandidates').hidden=true;$('#coordStatus').textContent='Localização ainda não confirmada';if(formMarker)formMarker.remove();formMarker=null;if(formMap){formMap.remove();formMap=null}}
-function openForm(id=null){editingId=id;const r=state.races.find(x=>x.id===id);show('form');$('#formTitle').textContent=r?'Editar corrida':'Nova corrida';$('#fOrder').value=r?.orderNo||'';$('#fUrgent').checked=!!r?.urgent;$('#fClient').value=r?.client||'';$('#fPhone').value=r?.phone||'';$('#fAddress').value=r?.address||'';$('#fNeighborhood').value=r?.neighborhood||'';if($('#fCity'))$('#fCity').value=r?.city||'';if($('#fState'))$('#fState').value=r?.state||'';if($('#fPostalcode'))$('#fPostalcode').value=r?.postalcode||'';$('#fValue').value=r?.value??'';$('#fDeliveryType').value=r?.deliveryType||'normal';$('#fItems').value=itemsToText(r?.items||[]);$('#fNotes').value=r?.notes||'';$('#deleteRace').hidden=!r;currentCoords=r?.lat!=null?{lat:r.lat,lng:r.lng}:null;setTimeout(()=>{if(r?.lat!=null)setFormMap(r.lat,r.lng);else if(formMap)formMap.invalidateSize()},80);updateFormCalc()}
+function resetForm(){editingId=null;window._ocrDraft=null;$('#ocrReview').hidden=true;$('#ocrReview').replaceChildren();window._ocrItems=null;currentCoords=null;if($('#fItems'))$('#fItems').value='';if($('#fCity'))$('#fCity').value='';if($('#fState'))$('#fState').value='';if($('#fPostalcode'))$('#fPostalcode').value='';$('#addressCandidates').hidden=true;$('#coordStatus').textContent='Localização ainda não confirmada';if(formMarker)formMarker.remove();formMarker=null;if(formMap){formMap.remove();formMap=null}}
+function openForm(id=null){editingId=id;window._ocrDraft=null;$('#ocrReview').hidden=true;$('#ocrReview').replaceChildren();const r=state.races.find(x=>x.id===id);show('form');$('#formTitle').textContent=r?'Editar corrida':'Nova corrida';$('#fOrder').value=r?.orderNo||'';$('#fUrgent').checked=!!r?.urgent;$('#fClient').value=r?.client||'';$('#fPhone').value=r?.phone||'';$('#fAddress').value=r?.address||'';$('#fNeighborhood').value=r?.neighborhood||'';if($('#fCity'))$('#fCity').value=r?.city||'';if($('#fState'))$('#fState').value=r?.state||'';if($('#fPostalcode'))$('#fPostalcode').value=r?.postalcode||'';$('#fValue').value=r?.value??'';$('#fDeliveryType').value=r?.deliveryType||'normal';$('#fItems').value=itemsToText(r?.items||[]);$('#fNotes').value=r?.notes||'';$('#deleteRace').hidden=!r;currentCoords=r?.lat!=null?{lat:r.lat,lng:r.lng}:null;setTimeout(()=>{if(r?.lat!=null)setFormMap(r.lat,r.lng);else if(formMap)formMap.invalidateSize()},80);updateFormCalc()}
 $('#searchAddressBtn').onclick=searchAddress;$('#verifyGoogleBtn').onclick=()=>{const q=$('#fAddress').value.trim();if(!q){toast('Digite um endereço primeiro.','error');return}window.open('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q),'_blank');};$('#useGpsBtn').onclick=useGPS;$('#fAddress').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();searchAddress()}};$('#fValue').oninput=updateFormCalc;
 function updateFormCalc(){const r=editingId&&state.races.find(x=>x.id===editingId),km=r?.distanceKm;$('#formCalc').textContent=km!=null?brl(calcFee(km)):'—';$('#calcExplain').textContent=km!=null?`Distância pelas ruas: ${km.toFixed(1)} km.`:'Distância pendente — aguardando GPS e cálculo pelas ruas. A corrida será salva uma única vez e atualizada depois.'}
-$('#saveRace').onclick=async()=>{if(saveRaceBusy)return;const client=$('#fClient').value.trim(),address=$('#fAddress').value.trim();if(!client||!address){toast('Preencha cliente e endereço.','error');return}if(!currentCoords){toast('Confirme a localização no mapa antes de salvar.','error');return}saveRaceBusy=true;$('#saveRace').disabled=true;const editId=editingId,id=editId||uuid(),coords={...currentCoords},data={orderNo:$('#fOrder').value.trim(),client,phone:$('#fPhone').value.trim(),address,neighborhood:$('#fNeighborhood').value.trim(),city:$('#fCity')?.value.trim()||'',state:$('#fState')?.value.trim()||'',postalcode:$('#fPostalcode')?.value.trim()||'',value:num($('#fValue').value),deliveryType:$('#fDeliveryType')?.value||'normal',linkedRaceId:window._followupSourceId||null,notes:$('#fNotes').value.trim(),items:parseItemsText($('#fItems').value),urgent:$('#fUrgent').checked,lat:coords.lat,lng:coords.lng};
+$('#saveRace').onclick=async()=>{if(saveRaceBusy)return;if(window._ocrDraft&&!$('#ocrReviewConfirmed')?.checked){toast('Confirme a revisão dos campos reconhecidos antes de salvar.','error');$('#ocrReviewConfirmed')?.focus();return}const client=$('#fClient').value.trim(),address=$('#fAddress').value.trim();if(!client||!address){toast('Preencha cliente e endereço.','error');return}if(!currentCoords){toast('Confirme a localização no mapa antes de salvar.','error');return}saveRaceBusy=true;$('#saveRace').disabled=true;const editId=editingId,id=editId||uuid(),coords={...currentCoords},data={orderNo:$('#fOrder').value.trim(),client,phone:$('#fPhone').value.trim(),address,neighborhood:$('#fNeighborhood').value.trim(),city:$('#fCity')?.value.trim()||'',state:$('#fState')?.value.trim()||'',postalcode:$('#fPostalcode')?.value.trim()||'',value:num($('#fValue').value),deliveryType:$('#fDeliveryType')?.value||'normal',linkedRaceId:window._followupSourceId||null,notes:$('#fNotes').value.trim(),items:parseItemsText($('#fItems').value),urgent:$('#fUrgent').checked,lat:coords.lat,lng:coords.lng};
   try{const {race,created}=await commitRiderCommand(next=>{const index=next.races.findIndex(item=>item.id===editId);if(editId&&index<0)throw new Error('A corrida foi removida por outra operação.');const old=index>=0?next.races[index]:null,r={...(old||{}),...data,id,linkedRaceId:data.linkedRaceId,status:old?.status||'open',createdAt:old?.createdAt||new Date().toISOString()};if(!old||old.lat!==r.lat||old.lng!==r.lng)r.distanceKm=null,r.deliveryFee=null;if(old)next.races[index]=r;else next.races.push(r);next.settings.routeOrderIds=[...(next.settings.routeOrderIds||[]).filter(x=>x!==id),id];return{result:{race:r,created:!old}}});window._followupSourceId=null;
   if(!lastGps){try{const p=await getPosition();setDriverPosition(p.coords.latitude,p.coords.longitude,p.coords.accuracy)}catch{}}
   const route=optimizedOrder.length?optimizedOrder:routeRaces();if(route.length)await requestRoadDistances(route);

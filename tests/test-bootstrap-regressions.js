@@ -10,7 +10,7 @@ const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 assert.match(app, /\$\$\('\.historyPeriod button'\)\.forEach/u, 'all history period controls are registered');
 assert.doesNotMatch(app, /(?<!\$)\$\('\.historyPeriod button'\)\.forEach/u, 'a singular selector is not iterated');
-assert.match(app, /let cameraStream=null;[\s\S]{0,40}let lastCapturedFile=null;/u, 'capture state is initialized before capture handlers');
+assert(app.indexOf('let cameraStream=null;') < app.indexOf("$('#takePhoto').onclick=") && app.indexOf('let lastCapturedFile=null;') < app.indexOf("$('#takePhoto').onclick="), 'capture state is initialized before capture handlers');
 assert.match(app, /if\(!navigator\.mediaDevices\?\.getUserMedia\)throw Error\('getUserMedia indisponível'\)/u, 'missing camera API enters the handled unavailable-camera flow');
 assert.match(identity, /if \(inviteForm\) inviteForm\.hidden/u, 'optional admin invitation control is guarded');
 assert.match(identity, /if \(membersList\) membersList\.hidden/u, 'optional admin membership control is guarded');

@@ -1,0 +1,48 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const N=require('../ocr/normalization');
+const Semantic=require('../ocr/semantic-parser');
+const Image=require('../ocr/image-preprocessor');
+const Pipeline=require('../ocr/pipeline');
+const root=path.join(__dirname,'..');
+const corpus=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/ocr-synthetic-corpus.json'),'utf8'));
+assert(corpus.length>=12,'synthetic corpus covers multiple layouts and ambiguous cases');
+const start=performance.now(),results=corpus.map(sample=>({sample,draft:Semantic.parseReceipt(sample.lines.map(text=>({text,confidence:.98})))})),durationMs=performance.now()-start;
+const fields=[...new Set(corpus.flatMap(sample=>Object.keys(sample.expected)))];
+const metrics={};for(const field of fields){let tp=0,fp=0,fn=0,review=0;for(const {sample,draft}of results){const actual=draft.fields[field]?.value||'',expected=sample.expected[field]||'';if(actual&&expected&&actual===expected)tp++;else if(actual&&!expected)fp++;else if(actual&&expected&&actual!==expected)fp++,fn++;else if(expected)fn++;if(['review','conflict'].includes(draft.fields[field]?.status))review++}metrics[field]={precision:tp+fp?Number((tp/(tp+fp)).toFixed(3)):null,recall:tp+fn?Number((tp/(tp+fn)).toFixed(3)):null,correct:tp,falseFill:fp,missed:fn,sentToReview:review}}
+assert.deepEqual(N.normalizePhone('(11) 90000-0000'),{value:'11900000000',valid:true});
+assert.equal(N.normalizePhone('(00) 1234-5678').valid,false);
+assert.equal(N.normalizePhone('(20) 90000-0000').valid,false,'unassigned Brazilian DDD is rejected');
+assert.deepEqual(N.normalizePostalCode('01310100'),{value:'01310-100',valid:true});
+assert.equal(N.normalizeState('sp').value,'SP');
+assert.equal(N.parseBrl('R$ 1.234,56').value,'1234.56');
+assert.equal(N.parseBrl('1.234,56 / 1,234.56').valid,false);
+assert.equal(N.normalizeStreet('Av. Brasil, 5'),'Avenida Brasil, 5');
+assert.equal(N.normalizeAddressNumber('Rua X, 9B').value,'9B');
+assert.deepEqual(Image.dimensions(6000,4000),{width:2400,height:1600,scale:.4});
+const pixels=new Uint8ClampedArray([240,240,240,255,40,40,40,255]);
+assert.equal(Image.grayAndContrast(new Uint8ClampedArray(pixels)).data[0],255);
+assert.equal(Image.adaptiveThreshold(pixels,2,1,2,12)[4],0);
+assert.equal(Image.LIMITS.maxVariants,2);
+assert(Object.values(metrics).every(metric=>metric.falseFill<=metric.correct+metric.missed),'false fills remain bounded by the reproducible corpus');
+const ambiguous=results.find(row=>row.sample.id==='ambiguous-high-impact').draft;
+for(const field of ['phone','value','address'])assert.equal(ambiguous.fields[field].value,'',`${field} conflict is not autofilled`);
+assert(results.every(row=>row.draft.requiresHumanReview),'every result requires human review');
+assert.equal(Pipeline.ASSETS.workerPath,'/vendor/tesseract/worker/worker.min.js');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),worker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
+assert.doesNotMatch(html,/cdn\.jsdelivr\.net\/npm\/tesseract|tessdata\.projectnaptha\.com/iu,'OCR does not load Tesseract/model from CDN');
+for(const asset of ['vendor/tesseract/tesseract.min.js','vendor/tesseract/worker/worker.min.js','vendor/tesseract/core/tesseract-core-lstm.wasm.js','vendor/tesseract/lang/4.0.0_best_int/por.traineddata.gz']){
+  assert(fs.statSync(path.join(root,asset)).size>1000,`${asset} is included locally`);
+  assert(worker.includes(`./${asset}`),`${asset} is in offline shell precache`);
+}
+assert(metrics.phone.falseFill===0&&metrics.value.falseFill===0&&metrics.address.falseFill===0,'high-impact fields never auto-fill a false positive in corpus');
+const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+assert(app.includes("window._ocrDraft&&!$('#ocrReviewConfirmed')?.checked"),'saving an OCR draft requires explicit human confirmation');
+assert(app.includes("if(id!=='form'&&window._ocrDraft){window._ocrDraft=null;$('#ocrReview').hidden=true;$('#ocrReview').replaceChildren()}"),'recognized text/evidence is released when leaving review');
+assert(app.includes("if(field==='number')"),'address number candidate can be selected for editing');
+assert(!/id="f(?:City|State|Postalcode)" type="hidden"/u.test(html),'recognized city, state and postal code are visible for human review');
+assert(!html.includes('undefined<script'),'document contains no leaked replacement placeholder');
+console.log(`OCR synthetic corpus: ${corpus.length} cases; per-field metrics=${JSON.stringify(metrics)}; parser=${durationMs.toFixed(2)}ms`);
+console.log('OCR normalization, confidence, conflicts, image limits, local assets and offline-cache tests: OK');
