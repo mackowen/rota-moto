@@ -123,7 +123,7 @@ async function uploadPendingProofMedia({apiBase=window.ROTA_MOTO_API_BASE||'/api
   const match=/^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/]+={0,2})$/u.exec(proof.media.localDataUrl);if(!match){proof.sync={...(proof.sync||{}),state:'failed',error:'MEDIA_INVALID'};await tx('proofs','readwrite',s=>s.put(proof));continue}
   try{
    const bytes=Uint8Array.from(atob(match[2]),char=>char.charCodeAt(0));if(bytes.byteLength<1||bytes.byteLength>8*1024*1024)throw new Error('PAYLOAD_TOO_LARGE');
-   const response=await fetchImpl(syncUrl(apiBase,`/domain/deliveries/${encodeURIComponent(deliveryId)}/proofs/media`),{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':match[1],'X-CSRF-Token':window.RotaMotoSessionGuard?.getCsrfToken()||syncCsrfToken||''},body:bytes});
+   const response=await fetchImpl(syncUrl(apiBase,`/domain/deliveries/${encodeURIComponent(deliveryId)}/proofs/media?proofId=${encodeURIComponent(proof.id)}`),{method:'POST',credentials:'include',cache:'no-store',headers:{'Content-Type':match[1],'X-CSRF-Token':window.RotaMotoSessionGuard?.getCsrfToken()||syncCsrfToken||''},body:bytes});
    let result={};try{result=await response.json()}catch(_){}if(!response.ok)throw new Error(result.error?.code||'MEDIA_UPLOAD_FAILED');
    proof.media={...proof.media,storageRef:result.storageRef,mimeType:result.mimeType,sizeBytes:result.sizeBytes,sha256:result.sha256};proof.sync={...(proof.sync||{}),state:'pending',uploadState:'synced',error:null};
    const race=state.races.find(row=>(row.deliveryId||row.id)===proof.deliveryId||row.sync?.canonicalId===proof.deliveryId);if(race)race.proofSyncState='pending';
