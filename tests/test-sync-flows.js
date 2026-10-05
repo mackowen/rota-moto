@@ -49,7 +49,7 @@ assert(motoSource.includes("renderHome();renderRaces();if($('#earnings')?.classL
 assert(motoSource.includes('state.races=nextRaces;state.earnings=nextEarnings;state.settings=normalizeSettings(nextSettings)'), 'pull persists and publishes canonical earnings and route settings after the transaction');
 assert(motoSource.includes('const linkedEarning=nextEarnings.filter(row=>row.canonicalId&&Number.isSafeInteger(row.amountMinor)&&row.deliveryId===event.entityId'), 'canonical Earning pulled before Delivery still attaches to its local projection');
 assert(motoSource.includes('nextSettings.canonicalRouteOrderIds=[...new Set([...canonicalRoutes.values()]'), 'pull projects authoritative Route.deliveryIds into local route ordering');
-assert(motoSource.includes('MEDIA_STORAGE_NOT_CONFIGURED')&&motoSource.includes("status:'local-only'"), 'proofs stay local until secure blob storage exists');
+assert(motoSource.includes('uploadPendingProofMedia')&&motoSource.includes("uploadState:'pending'"), 'proofs remain local and retry upload through the authenticated media endpoint');
 assert(motoSource.includes("proofId:proof.id,proofSha256:proof.media?.sha256"), 'completion event links its locally persisted proof metadata');
 assert(motoSource.includes('RotaMotoExecutionWorkflow.resetForRedelivery(current)'), 'redelivery archives the prior local attempt before resetting its active projection');
 

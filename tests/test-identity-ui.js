@@ -16,6 +16,9 @@ assert.match(source, /credentials: 'include'/u, 'identity uses the protected coo
 assert.match(source, /X-CSRF-Token/u);
 assert.match(source, /\/identity\/session/u);
 assert.match(source, /\/identity\/recovery\/consume/u);
+assert.match(source, /data-mfa-confirm/u, 'Motoboy can complete native MFA enrollment');
+assert.match(source, /\/identity\/mfa\/enrollment\/confirm/u);
+assert.match(source, /applyMailAction/u, 'email links open the corresponding recovery or invitation flow');
 assert.match(source, /\/identity\/membership-invitations\/accept/u);
 assert.match(source, /\/admin\/memberships/u);
 assert.match(source, /\/admin\/roles/u);
