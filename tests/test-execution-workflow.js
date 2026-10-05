@@ -1,5 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const workflow = require('../execution-workflow');
 require('../contract');
 const contract = globalThis.RotaMotoContract;
@@ -25,6 +27,13 @@ assert.equal(workflow.localStatus('RETURNED'), 'issue');
 assert.equal(workflow.localStatus('REDELIVERY'), 'open');
 assert.equal(workflow.inActiveRoute({canonicalDelivery:true,canonicalStatus:'CANCELLED',status:'cancelled'}, contract), false);
 assert.equal(workflow.inActiveRoute({canonicalDelivery:true,canonicalStatus:'ASSIGNED',status:'open'}, contract), true);
+
+const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const command = appSource.slice(appSource.indexOf('async function runDeliveryAction'), appSource.indexOf('async function acceptRace'));
+assert.match(command, /if\(name==='depart'&&current\)refreshRouteAfterDeliveryAction\(\)/,
+  'a committed departure releases its action lock without waiting for optional GPS/road calculations');
+assert.doesNotMatch(command, /await refreshActiveRoute\(\)/,
+  'route recalculation cannot block the next authenticated delivery action');
 
 const archived = workflow.resetForRedelivery({canonicalStatus:'RETURNED',returnedAt:'2026-10-04T10:00:00Z',returnReason:'cliente ausente',customerSignature:'data:image/png;base64,AAAA',gpsDistanceKm:3.5});
 assert.equal(archived.returnedAt, undefined);

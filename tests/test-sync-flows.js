@@ -35,7 +35,7 @@ assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AAAA')
 assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AA" onerror="alert(1)'), '', 'untrusted signature markup is not used as an image URL');
 assert(motoSource.includes('data-view="${esc(r.id)}"'),'imported race IDs are escaped in HTML attributes');
 assert(motoSource.includes('src="${esc(signature)}"'),'signature source is constrained and escaped');
-assert(/<script src="contract\.js\?v=1"><\/script><script src="backup-format\.js\?v=1"><\/script><script src="sync-reconciliation\.js\?v=2"><\/script><script src="execution-workflow\.js\?v=2"><\/script><script src="indexeddb-schema\.js\?v=2"><\/script><script src="app\.js\?v=40\.2"><\/script>/u.test(motoHtml),'browser must load shared contract, backup and reconciliation layers before its app consumer');
+assert(/<script src="contract\.js\?v=1"><\/script><script src="backup-format\.js\?v=1"><\/script><script src="sync-reconciliation\.js\?v=2"><\/script><script src="execution-workflow\.js\?v=2"><\/script><script src="indexeddb-schema\.js\?v=2"><\/script><script src="identity-session-guard\.js"><\/script><script src="app\.js\?v=40\.2"><\/script>/u.test(motoHtml),'browser must load shared security/sync dependencies before its app consumer');
 assert(motoWorker.includes("'./contract.js?v=1'"),'contract must be available from offline precache');
 assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
 assert(motoSource.includes('async function createMotoBackup()')&&motoSource.includes('RotaMotoBackupFormat.create({app:\'motoboy\''),'Motoboy backup exports a versioned snapshot of every IndexedDB store');
