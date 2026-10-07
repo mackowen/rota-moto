@@ -64,6 +64,8 @@ assert(motoSource.includes('navigationOrderIds=Array.isArray(s?.navigationOrderI
 assert(motoSource.includes('RotaMotoNavigationWorkflow.buildUrl(current.batch,provider,state.settings.googleLimit||4)'),'external navigation intents are generated through a single adapter boundary');
 const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculateRoadDistances(){'),motoSource.indexOf('\nasync function reverseAddress'));
 assert(routeMetrics.includes("reason:'route-distance-not-owned'"),'Motoboy abstains from calculating Restaurant-owned road distance');
+assert(routeMetrics.includes('async function requestRoadDistances(rows)')&&routeMetrics.includes('await calculateRoadDistances(rows)'),'route UI calls the common road-distance boundary');
+assert(routeMetrics.includes("reason==='route-distance-not-owned'?'Cálculo viário indisponível neste aparelho.")&&routeMetrics.includes("return{ok:false,reason}"),'unavailable route distance becomes visible abstention, not an uncaught browser error');
 assert(!routeMetrics.includes('commitRiderCommand(')&&!routeMetrics.includes('persistOnly('),'Motoboy cannot mutate synced route distances');
 assert(motoSource.includes("tx(['races','deliveries','inbox','tombstones'],'readwrite',t=>"),'received tombstones commit with sync receipt and projections');
 assert(motoSource.includes('return enqueueRiderWrite(()=>receiveRestaurantPacketNow(packet),{refreshState:true})'),'sync receipt shares cross-tab write lock and refreshes persisted state');

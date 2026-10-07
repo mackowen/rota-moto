@@ -388,6 +388,18 @@ async function geocode(q){
 }
 async function roadDistancesViaOSRM(){throw Object.assign(new Error('Cálculo viário pertence ao Restaurante e ao motor interno configurado.'),{code:'ROUTE_DISTANCE_UNAVAILABLE'});}
 async function calculateRoadDistances(){routeDurationSeconds=0;setRouteStatus('Cálculo viário indisponível no Motoboy. A rota e os valores são administrados pelo Restaurante.');return{ok:false,reason:'route-distance-not-owned'}}
+// Route road-distance calculations are Restaurant-owned. Keep every route UI
+// entry point on the same fail-closed boundary and turn unavailability into an
+// explicit operational status instead of an uncaught browser exception.
+async function requestRoadDistances(rows){
+  try{return await calculateRoadDistances(rows)}
+  catch(error){
+    routeDurationSeconds=0;
+    const reason=error?.code==='ROUTE_DISTANCE_UNAVAILABLE'?'route-distance-not-owned':'route-distance-unavailable';
+    setRouteStatus(reason==='route-distance-not-owned'?'Cálculo viário indisponível neste aparelho. A sequência recebida do Restaurante foi preservada.':'Não foi possível atualizar as distâncias. A sequência da rota foi preservada.');
+    return{ok:false,reason};
+  }
+}
 async function reverseAddress(lat,lng){const key=`${Number(lat).toFixed(6)},${Number(lng).toFixed(6)}`;if(nominatimCache.has('reverse:'+key))return nominatimCache.get('reverse:'+key);await waitNominatim();const r=await fetchJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`,10000);nominatimCache.set('reverse:'+key,r);return r}
 function fillAddressParts(a){if(!a)return;$('#fNeighborhood').value=a.suburb||a.neighbourhood||a.quarter||$('#fNeighborhood').value||'';if($('#fCity'))$('#fCity').value=a.city||a.town||a.municipality||a.village||$('#fCity').value||'';if($('#fState'))$('#fState').value=a.state_code||a.state||$('#fState').value||'';if($('#fPostalcode'))$('#fPostalcode').value=(a.postcode||$('#fPostalcode').value||'').replace(/\s+/g,'')}
 function osmTiles(mapInstance){return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(mapInstance)}
