@@ -1,0 +1,20 @@
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require.resolve('../app.js'),'utf8');
+const defaultsStart=source.indexOf('const defaults='),defaultsEnd=source.indexOf('\nlet state=',defaultsStart),helpersStart=source.indexOf('function driverSettingsStorageKey(){'),helpersEnd=source.indexOf('\nfunction applyTheme()',helpersStart);
+assert(defaultsStart>=0&&defaultsEnd>defaultsStart&&helpersStart>=0&&helpersEnd>helpersStart,'settings and Driver-owned persistence boundary must exist');
+const storage=new Map(),earnings=[{id:'earning-realized',amountMinor:4200}];
+const ctx=vm.createContext({structuredClone,Number,String,Math,Promise,queueMicrotask,setTimeout,console,tx:async(_store,_mode,work)=>{const api={get(key){const request={};queueMicrotask(()=>{request.result=storage.get(key)||null;request.onsuccess?.()});return request},put(value){storage.set(value.key,structuredClone(value));return value.key}};const result=work(api);if(result&&typeof result.then==='function')return await result;await Promise.resolve();await Promise.resolve();return result},num:value=>{const n=Number(value);return Number.isFinite(n)?n:0},syncSession:{companyId:'tenant-a',driverId:'driver-a'},state:{settings:{companyId:'tenant-a',driverId:'driver-a',driverProfile:{driverId:'driver-a'},companyProfile:{companyId:'tenant-a',routeGroupingPolicy:'nearest_extension'},dailyGoal:77},driverSettings:{dailyGoalMinor:0},earnings}});
+vm.runInContext(source.slice(defaultsStart,defaultsEnd)+'\n'+source.slice(helpersStart,helpersEnd)+'\nthis.api={driverSettingsStorageKey,loadDriverOwnedSettings,saveDriverDailyGoal};',ctx);
+(async()=>{
+ await ctx.api.loadDriverOwnedSettings();assert.equal(ctx.state.driverSettings.dailyGoalMinor,7700,'legacy goal is assigned only when the same Driver is identifiable');
+ assert.equal(storage.get('driver-settings:tenant-a:driver-a').value.dailyGoalMinor,7700);assert.equal(Object.hasOwn(ctx.state.settings,'dailyGoal'),false,'legacy target leaves Company/device settings');
+ assert.equal(await ctx.api.saveDriverDailyGoal('123.45'),true);assert.equal(storage.get('driver-settings:tenant-a:driver-a').value.dailyGoalMinor,12345);
+ assert.equal(storage.get('settings').value.companyProfile.routeGroupingPolicy,'nearest_extension','Driver goal write preserves Company policy snapshot');
+ assert.equal(ctx.state.earnings[0].amountMinor,4200,'meta target never writes/rewrites realized Earning');
+ ctx.state.driverSettings={dailyGoalMinor:0};ctx.syncSession=null;await ctx.api.loadDriverOwnedSettings();assert.equal(ctx.state.driverSettings.dailyGoalMinor,12345,'tenant/Driver scoped target restores offline from retained profile');
+ const other=vm.createContext({...ctx,state:{settings:{companyProfile:{companyId:'tenant-a'},driverProfile:{driverId:'driver-b'},dailyGoal:0},legacyDailyGoal:50,driverSettings:{dailyGoalMinor:0},earnings:[]},syncSession:{companyId:'tenant-a',driverId:'driver-b'},tx:ctx.tx});
+ vm.runInContext(source.slice(defaultsStart,defaultsEnd)+'\n'+source.slice(helpersStart,helpersEnd)+'\nthis.api={driverSettingsStorageKey,loadDriverOwnedSettings};',other);
+ await other.api.loadDriverOwnedSettings();assert.equal(other.state.driverSettings.dailyGoalMinor,0,'legacy target is not assigned to another Driver');assert.equal(storage.get('driver-settings:legacy-unassigned').value.dailyGoalMinor,5000,'ambiguous ownership is preserved for review');
+ console.log('Driver-owned daily goal migration, persistence, offline restore and Earning separation: PASS');
+})().catch(error=>{console.error(error);process.exitCode=1});

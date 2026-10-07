@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.join(__dirname,'..'),app=fs.readFileSync(path.join(root,'app.js'),'utf8'),html=fs.readFileSync(path.join(root,'index.html'),'utf8'),contract=fs.readFileSync(path.join(root,'CONTRACT.md'),'utf8');
+assert.match(app,/driverSettingsStorageKey\(\).*companyProfile\?\.companyId/u,'offline key derives from retained tenant snapshot');
+assert.match(app,/driverProfile\?\.driverId/u,'offline key derives from retained Driver snapshot');
+const syncMerge=app.slice(app.indexOf('async function reconcileMotoPullPage('),app.indexOf('async function setSyncStatus('));
+assert(syncMerge.includes('page.companySettings.revision>revision'),'old/replayed Company snapshots are ignored by monotonic revision');
+assert(syncMerge.includes('syncMap.get(`company-settings:${companyId}`)'),'snapshot revision is tenant-scoped');
+assert(syncMerge.includes('nextSettings.companyProfile=structuredClone(page.companySettings)'),'latest valid Company snapshot is stored for offline reads');
+assert(!syncMerge.includes('nextSettings=normalizeSettings(page.companySettings)'),'corporate sync does not replace Driver/device-owned preferences');
+assert.match(app,/s\.put\(\{key,value:state\.driverSettings\}\)/u,'daily goal persists in Driver-owned meta record');
+assert.match(app,/dailyGoalMinor/gu);assert.doesNotMatch(app,/dailyGoal:0/u,'goal is not defaulted into shared/device settings');
+assert.match(app,/delete x\.dailyGoal/u,'legacy target is removed from Company/device settings projection');
+assert.match(app,/driver-settings:legacy-unassigned/u,'ambiguous legacy ownership is preserved without assigning to a different Driver');
+assert.match(html,/Meta financeira pessoal diária/u);assert.match(contract,/DRIVER_OWNED[\s\S]*não integra snapshots corporativos/u);
+assert.match(app,/routeGroupingPolicy/u,'Restaurant-owned policy is rendered from Company snapshot');
+assert.match(html,/value="osmand"/u,'OsmAnd preference is available as a device-local setting');
+console.log('Motoboy Driver/Company/device ownership contracts: PASS');

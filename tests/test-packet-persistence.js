@@ -29,7 +29,7 @@ function makeDatabase(seed={}){
 const validate=extract('async function validateRestaurantPacket(packet={}){','function receiveRestaurantPacket(packet={})');
 const lock=extract('function withRiderWriteLock(', '\nasync function readPersistedRiderSnapshot');
 const queue=extract('let riderCommandQueue=Promise.resolve();','\nfunction commitRiderCommand');
-const receive=source.slice(source.indexOf('function receiveRestaurantPacket(packet={})'),source.indexOf('\n\n\nfunction normalizeSettings'));
+const receive=source.slice(source.indexOf('function receiveRestaurantPacket(packet={})'),source.indexOf('\n\n\nfunction driverSettingsStorageKey'));
 const transaction=extract('async function tx(store,mode,fn){','async function persistOnly');
 const contract={
  isNewer:(a,b)=>Date.parse(a.updatedAt||0)>Date.parse(b.updatedAt||0)||(Date.parse(a.updatedAt||0)===Date.parse(b.updatedAt||0)&&Number(a.version||0)>Number(b.version||0)),normalizeDeliveryStatus:s=>s||'CREATED',assertTransition:()=>{},

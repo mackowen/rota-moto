@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('node:assert/strict');
+const nav=require('../navigation-intents');
+const destination={lat:-23.55052,lng:-46.63331};
+const osm=nav.osmandGeoUri(destination);
+assert.equal(osm,'geo:0,0?q=-23.550520%2C-46.633310');
+assert.doesNotMatch(osm,/name|phone|address|customer|token|secret/iu);
+const google=new URL(nav.googleDirectionsUrl([{lat:-23.5,lng:-46.5},destination]));
+assert.equal(google.hostname,'www.google.com');assert.equal(google.searchParams.get('destination'),'-23.550520,-46.633310');
+assert.equal(google.searchParams.get('waypoints'),'-23.500000,-46.500000');
+const waze=new URL(nav.wazeUrl(destination));assert.equal(waze.hostname,'waze.com');assert.equal(waze.searchParams.get('ll'),'-23.550520,-46.633310');
+for(const invalid of [{lat:91,lng:0},{lat:0,lng:181},{lat:NaN,lng:0},null])assert.throws(()=>nav.osmandGeoUri(invalid),/coordinates/u);
+assert.throws(()=>nav.googleDirectionsUrl([]),/coordinate/u);
+console.log('External navigation URIs validate coordinates and expose coordinates only: PASS');

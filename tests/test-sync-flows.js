@@ -36,7 +36,7 @@ assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AA" on
 assert(motoSource.includes('data-view="${esc(r.id)}"'),'imported race IDs are escaped in HTML attributes');
 assert(motoSource.includes('src="${esc(signature)}"'),'signature source is constrained and escaped');
 assert(/<script src="ocr\/normalization\.js\?v=1"><\/script><script src="ocr\/semantic-parser\.js\?v=1"><\/script><script src="ocr\/image-preprocessor\.js\?v=1"><\/script><script src="ocr\/pipeline\.js\?v=1"><\/script><script src="vendor\/tesseract\/tesseract\.min\.js\?v=5\.1\.1"><\/script>/u.test(motoHtml),'OCR dependencies load in order before the application');
-assert(/<script src="contract\.js\?v=1"><\/script>[\s\S]*<script src="indexeddb-schema\.js\?v=2"><\/script>[\s\S]*<script src="delivery-qr\.js\?v=1"><\/script>[\s\S]*<script src="qr-decoder\.js\?v=1"><\/script>[\s\S]*<script src="identity-session-guard\.js"><\/script><script src="app\.js\?v=41\.0"><\/script>/u.test(motoHtml),'contract, storage, QR and session dependencies load before app');
+assert(/<script src="navigation-intents.js\?v=1"><\/script><script src="contract\.js\?v=1"><\/script>[\s\S]*<script src="indexeddb-schema\.js\?v=2"><\/script>[\s\S]*<script src="delivery-qr\.js\?v=1"><\/script>[\s\S]*<script src="qr-decoder\.js\?v=1"><\/script>[\s\S]*<script src="identity-session-guard\.js"><\/script><script src="app\.js\?v=42\.0"><\/script>/u.test(motoHtml),'contract, storage, QR and session dependencies load before app');
 assert(motoWorker.includes("'./contract.js?v=1'"),'contract must be available from offline precache');
 assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
 assert(motoSource.includes('async function createMotoBackup()')&&motoSource.includes('RotaMotoBackupFormat.create({app:\'motoboy\''),'Motoboy backup exports a versioned snapshot of every IndexedDB store');
@@ -60,9 +60,9 @@ assert(motoSource.includes("function deleteRiderRace(id)"));
 assert(motoSource.includes('events:[],deliveries:[],drivers:[],routes:[]'),'Motoboy must not publish canonical Delivery or administrative data');
 assert(motoSource.includes("await tx(['races','deliveries','meta'],'readwrite',t=>"),'startup projection normalization is one transaction');
 assert(motoSource.includes('function commitRouteOrder(ids){return commitRiderCommand('),'route-order settings use the shared serialized command queue');
-const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculateRoadDistances(rs){'),motoSource.indexOf('\nfunction requestRoadDistances'));
-assert(routeMetrics.includes('commitRiderCommand('),'route distance results publish only after snapshot persistence');
-assert(!routeMetrics.includes('persistOnly('),'route distance calculations do not persist already-mutated global races');
+const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculateRoadDistances(){'),motoSource.indexOf('\nasync function reverseAddress'));
+assert(routeMetrics.includes("reason:'route-distance-not-owned'"),'Motoboy abstains from calculating Restaurant-owned road distance');
+assert(!routeMetrics.includes('commitRiderCommand(')&&!routeMetrics.includes('persistOnly('),'Motoboy cannot mutate synced route distances');
 assert(motoSource.includes("tx(['races','deliveries','inbox','tombstones'],'readwrite',t=>"),'received tombstones commit with sync receipt and projections');
 assert(motoSource.includes('return enqueueRiderWrite(()=>receiveRestaurantPacketNow(packet),{refreshState:true})'),'sync receipt shares cross-tab write lock and refreshes persisted state');
 // History deletion must commit tombstones and all cleared projections together.
