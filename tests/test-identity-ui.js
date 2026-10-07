@@ -32,6 +32,8 @@ assert.match(source, /clearSession/u, 'logout clears in-memory sync credentials'
 assert.match(source, /role="dialog" aria-modal="true"/u, 'account access is exposed as a modal dialog');
 assert.match(source, /visibleControls\(\)/u, 'account dialog keeps keyboard focus within visible controls');
 assert.match(source, /placeTrigger\(\)/u, 'authenticated account access is attached to the application header');
+assert.match(source,/const applicationRoot = \(\) => document\.querySelector\('#app'\) \|\| document\.querySelector\('\.app'\)/u,'identity gating and account placement resolve the Motoboy application root');
+assert.match(styles,/\.app \.rm-account-trigger--inline/u,'inline identity trigger styling also covers the Motoboy application root');
 assert.match(source, /app\.inert = open \|\| gated/u, 'opening the account dialog makes the background inert');
 assert.match(appSource, /document\.addEventListener\('keydown',e=>\{const m=\$\('#modal'\)/u, 'operational modal traps keyboard focus and handles Escape');
 assert.match(appSource, /historyPeriod button[\s\S]{0,280}aria-pressed/u, 'history period toggles expose their selected state');

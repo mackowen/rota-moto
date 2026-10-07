@@ -43,7 +43,8 @@
   cursor: pointer;
 }
 
-#app .rm-account-trigger--inline {
+#app .rm-account-trigger--inline,
+.app .rm-account-trigger--inline {
   position: static;
   z-index: auto;
   flex: 0 0 auto;

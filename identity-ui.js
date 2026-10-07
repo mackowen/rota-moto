@@ -52,6 +52,7 @@
   const $ = (selector, root = host) => root.querySelector(selector);
   const panel = $('#rmIdentityPanel');
   const trigger = $('.rm-account-trigger');
+  const applicationRoot = () => document.querySelector('#app') || document.querySelector('.app');
   const appKind = document.currentScript?.dataset.app || 'restaurante';
   if (appKind !== 'restaurante') $('[data-admin]').remove();
   function message(error) { return codeMessages[error?.code] || (error?.network ? codeMessages.NETWORK : 'Não foi possível concluir. Revise os dados e tente novamente.'); }
@@ -77,7 +78,7 @@
   }
   let previousFocus = null;
   function placeTrigger() {
-    const app = document.querySelector('#app');
+    const app = applicationRoot();
     const anchor = current || offlineMode ? app?.querySelector('.top') : null;
     const parent = anchor || host;
     if (trigger.parentElement !== parent) parent.append(trigger);
@@ -91,7 +92,7 @@
     if (open && panel.hidden) previousFocus = document.activeElement;
     panel.hidden = !open;
     trigger.setAttribute('aria-expanded', String(open));
-    const app = document.querySelector('#app');
+    const app = applicationRoot();
     const gated = host.dataset.gated === 'true';
     if (app) { app.inert = open || gated; app.setAttribute('aria-hidden', String(open || gated)); }
     if (open) (visibleControls()[0] || panel).focus();
@@ -121,7 +122,7 @@
     if (inviteForm) inviteForm.hidden = !session?.permissions?.includes('members.invite');
     if (membersList) membersList.hidden = !session?.permissions?.includes('members.read');
     if (membersNote) membersNote.hidden = Boolean(session?.permissions?.includes('members.read'));
-    const appRoot = document.querySelector('#app');
+    const appRoot = applicationRoot();
     if (appRoot) { appRoot.inert = !session && !offlineMode; appRoot.setAttribute('aria-hidden', String(!session && !offlineMode)); }
     host.dataset.gated = String(!session && !offlineMode);
     if (adminPanel) adminPanel.hidden = !(session && appKind === 'restaurante' && session.permissions?.includes('company.manage'));
@@ -188,7 +189,7 @@
     } catch (error) { if (error.code === 'MFA_REQUIRED') { $('[data-mfa-label]').hidden = false; form.elements.mfaCode.focus(); } else { form.elements.password.value = ''; form.elements.mfaCode.value = ''; $('[data-mfa-label]').hidden = true; } $('[data-login-error]').textContent = message(error); setStatus('Não foi possível autenticar'); }
     finally { working = false; setBusy(form, false); }
   });
-  $('[data-offline]').addEventListener('click', () => { sessionReadGuard.invalidate(); offlineMode = true; trigger.textContent = 'Conta · modo local'; const appRoot = document.querySelector('#app'); if (appRoot) { appRoot.inert = false; appRoot.setAttribute('aria-hidden', 'false'); } host.dataset.gated = 'false'; setStatus('Modo local sem identidade do servidor'); setOpen(false); });
+  $('[data-offline]').addEventListener('click', () => { sessionReadGuard.invalidate(); offlineMode = true; trigger.textContent = 'Conta · modo local'; const appRoot = applicationRoot(); if (appRoot) { appRoot.inert = false; appRoot.setAttribute('aria-hidden', 'false'); } host.dataset.gated = 'false'; setStatus('Modo local sem identidade do servidor'); setOpen(false); });
   $('[data-switch]').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget; if (working || !form.reportValidity()) return;
     working = true; setBusy(form, true); $('[data-switch-error]').textContent = '';
@@ -300,9 +301,9 @@
   });
   window.addEventListener('online', async () => { if (!current && !offlineMode) { const session = await restore(); if (session) await syncAfterAuthentication(); } else if (current) await syncAfterAuthentication(); });
   window.addEventListener('rotamoto:session-expired', expireSession);
-  const initialAppRoot = document.querySelector('#app'); if (initialAppRoot) { initialAppRoot.inert = true; initialAppRoot.setAttribute('aria-hidden', 'true'); }
+  const initialAppRoot = applicationRoot(); if (initialAppRoot) { initialAppRoot.inert = true; initialAppRoot.setAttribute('aria-hidden', 'true'); }
   host.dataset.gated = 'true'; trigger.hidden = false; setOpen(true); restore().then(async session => { if (session) { setOpen(false); await syncAfterAuthentication(); } });
-  const appRoot = document.querySelector('#app');
+  const appRoot = applicationRoot();
   if (appRoot) new MutationObserver(placeTrigger).observe(appRoot, { childList: true, subtree: true });
   window.RotaMotoIdentity = Object.freeze({ restore, getSession: () => current, isOfflineMode: () => offlineMode });
 })();
