@@ -9,6 +9,7 @@ const identity = fs.readFileSync(path.join(root, 'identity-ui.js'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 assert.match(app, /\$\$\('\.historyPeriod button'\)\.forEach/u, 'all history period controls are registered');
+assert.match(app, /if\(id==='settings'\)renderSettings\(\)/u, 'opening settings refreshes canonical settings after sync');
 assert.doesNotMatch(app, /(?<!\$)\$\('\.historyPeriod button'\)\.forEach/u, 'a singular selector is not iterated');
 assert(app.indexOf('let cameraStream=null;') < app.indexOf("$('#takePhoto').onclick=") && app.indexOf('let lastCapturedFile=null;') < app.indexOf("$('#takePhoto').onclick="), 'capture state is initialized before capture handlers');
 assert.match(app, /if\(!navigator\.mediaDevices\?\.getUserMedia\)throw Error\('getUserMedia indisponível'\)/u, 'missing camera API enters the handled unavailable-camera flow');
