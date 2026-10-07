@@ -17,6 +17,10 @@ assert.equal(R.shouldRetry('rejected',false),false);assert.equal(R.shouldRetry('
 const opMap=new Map([['operation:event-local',{canonicalId:'00000000-0000-4000-8000-000000000099'}]]);assert.equal(R.findCanonicalFact([{id:'event-local'}],'00000000-0000-4000-8000-000000000099',opMap,row=>`operation:${row.id}`).id,'event-local');
 const race=R.projectMotoboyDelivery(event.payload,{id:event.payload.orderId,customer:{name:'Jo'},address:'Rua A',coords:[-23,-46],items:[{name:'X'}]},{status:'route',startedAt:'2026-10-04T09:30:00Z'},{pendingExecution:true});
 assert.equal(race.status,'route');assert.equal(race.driverId,'driver-a');assert.equal(race.client,'Jo');assert.equal(race.lat,-23);assert.equal(race.sync.canonicalVersion,3);
+const syncedCoordinates=R.projectMotoboyDelivery(event.payload,{id:event.payload.orderId,extensions:{x_rotamoto_navigation_coordinates:{latitude:-23.5,longitude:-46.6,provenance:'restaurant_order_coordinates'}}});
+assert.equal(syncedCoordinates.lat,-23.5);assert.equal(syncedCoordinates.lng,-46.6,'validated restaurant-owned route coordinates survive the sync projection');
+const invalidSyncedCoordinates=R.projectMotoboyDelivery(event.payload,{extensions:{x_rotamoto_navigation_coordinates:{latitude:91,longitude:181,provenance:'restaurant_order_coordinates'}}});
+assert.equal(invalidSyncedCoordinates.lat,null);assert.equal(invalidSyncedCoordinates.lng,null,'invalid coordinates remain unavailable after sync');
 assert.equal(R.projectMotoboyDelivery(event.payload,{}, {assignmentRevoked:true}).assignmentRevoked,false,'a new canonical assignment clears the local revocation marker');
 const cancelled=R.projectMotoboyDelivery({...event.payload,status:'CANCELLED',version:4},{},{status:'route'},{pendingExecution:true});assert.equal(cancelled.status,'cancelled');assert.equal(cancelled.sync.state,'conflict');
 const restaurant=R.projectRestaurantDelivery({...event.payload,status:'OUT_FOR_DELIVERY',version:4},{id:'local-del',driverId:'local-driver',priority:'NORMAL',assignedAt:'local-time',estimatedDistanceM:10,status:'ASSIGNED'},{pendingPlanning:true});

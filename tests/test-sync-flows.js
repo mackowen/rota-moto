@@ -36,7 +36,7 @@ assert.equal(renderingContext.safeSignatureDataUrl('data:image/png;base64,AA" on
 assert(motoSource.includes('data-view="${esc(r.id)}"'),'imported race IDs are escaped in HTML attributes');
 assert(motoSource.includes('src="${esc(signature)}"'),'signature source is constrained and escaped');
 assert(/<script src="ocr\/normalization\.js\?v=1"><\/script><script src="ocr\/semantic-parser\.js\?v=1"><\/script><script src="ocr\/image-preprocessor\.js\?v=1"><\/script><script src="ocr\/pipeline\.js\?v=1"><\/script><script src="vendor\/tesseract\/tesseract\.min\.js\?v=5\.1\.1"><\/script>/u.test(motoHtml),'OCR dependencies load in order before the application');
-assert(/<script src="navigation-intents.js\?v=1"><\/script><script src="contract\.js\?v=1"><\/script>[\s\S]*<script src="indexeddb-schema\.js\?v=2"><\/script>[\s\S]*<script src="delivery-qr\.js\?v=1"><\/script>[\s\S]*<script src="qr-decoder\.js\?v=1"><\/script>[\s\S]*<script src="identity-session-guard\.js"><\/script><script src="app\.js\?v=42\.0"><\/script>/u.test(motoHtml),'contract, storage, QR and session dependencies load before app');
+assert(/<script src="navigation-intents.js\?v=1"><\/script><script src="navigation-workflow.js\?v=1"><\/script><script src="contract\.js\?v=1"><\/script>[\s\S]*<script src="indexeddb-schema\.js\?v=2"><\/script>[\s\S]*<script src="delivery-qr.js\?v=1"><\/script>[\s\S]*<script src="qr-decoder\.js\?v=1"><\/script>[\s\S]*<script src="identity-session-guard\.js"><\/script><script src="app\.js\?v=42\.2"><\/script>/u.test(motoHtml),'navigation, contract, storage, QR and session dependencies load before app');
 assert(motoWorker.includes("'./contract.js?v=1'"),'contract must be available from offline precache');
 assert(motoSource.includes("for(const store of ['races','deliveries','deliveryEvents','locations','proofs','earnings','outbox','inbox','syncState'])"));
 assert(motoSource.includes('async function createMotoBackup()')&&motoSource.includes('RotaMotoBackupFormat.create({app:\'motoboy\''),'Motoboy backup exports a versioned snapshot of every IndexedDB store');
@@ -49,7 +49,7 @@ assert(motoSource.includes("if(decision==='stale'){inbox.put({id:`server:${event
 assert(motoSource.includes("renderHome();renderRaces();if($('#earnings')?.classList.contains('active'))renderEarnings()"), 'canonical pull refreshes active user-facing projections without waiting for reload');
 assert(motoSource.includes('state.races=nextRaces;state.earnings=nextEarnings;state.settings=normalizeSettings(nextSettings)'), 'pull persists and publishes canonical earnings and route settings after the transaction');
 assert(motoSource.includes('const linkedEarning=nextEarnings.filter(row=>row.canonicalId&&Number.isSafeInteger(row.amountMinor)&&row.deliveryId===event.entityId'), 'canonical Earning pulled before Delivery still attaches to its local projection');
-assert(motoSource.includes('nextSettings.canonicalRouteOrderIds=[...new Set([...canonicalRoutes.values()]'), 'pull projects authoritative Route.deliveryIds into local route ordering');
+assert(motoSource.includes('nextSettings.canonicalRouteSnapshots=[...canonicalRoutes.entries()]')&&motoSource.includes('nextSettings.canonicalRouteOrderIds=[...new Set(nextSettings.canonicalRouteSnapshots.flatMap(route=>route.deliveryIds))]'), 'pull projects revisioned authoritative Route snapshots for local navigation');
 assert(motoSource.includes('uploadPendingProofMedia')&&motoSource.includes("uploadState:'pending'"), 'proofs remain local and retry upload through the authenticated media endpoint');
 assert(motoSource.includes('proofs/media?proofId=${encodeURIComponent(proof.id)}'), 'proof upload binds the server intent to the local DeliveryProof id');
 assert(motoSource.includes("proofId:proof.id,proofSha256:proof.media?.sha256"), 'completion event links its locally persisted proof metadata');
@@ -60,6 +60,8 @@ assert(motoSource.includes("function deleteRiderRace(id)"));
 assert(motoSource.includes('events:[],deliveries:[],drivers:[],routes:[]'),'Motoboy must not publish canonical Delivery or administrative data');
 assert(motoSource.includes("await tx(['races','deliveries','meta'],'readwrite',t=>"),'startup projection normalization is one transaction');
 assert(motoSource.includes('function commitRouteOrder(ids){return commitRiderCommand('),'route-order settings use the shared serialized command queue');
+assert(motoSource.includes('navigationOrderIds=Array.isArray(s?.navigationOrderIds)?s.navigationOrderIds:(Array.isArray(s?.routeOrderIds)?s.routeOrderIds:[])')&&motoSource.includes('delete x.routeOrderIds'),'legacy route order is migrated to a device-only navigation projection');
+assert(motoSource.includes('RotaMotoNavigationWorkflow.buildUrl(current.batch,provider,state.settings.googleLimit||4)'),'external navigation intents are generated through a single adapter boundary');
 const routeMetrics=motoSource.slice(motoSource.indexOf('async function calculateRoadDistances(){'),motoSource.indexOf('\nasync function reverseAddress'));
 assert(routeMetrics.includes("reason:'route-distance-not-owned'"),'Motoboy abstains from calculating Restaurant-owned road distance');
 assert(!routeMetrics.includes('commitRiderCommand(')&&!routeMetrics.includes('persistOnly('),'Motoboy cannot mutate synced route distances');

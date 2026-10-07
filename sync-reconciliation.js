@@ -27,7 +27,9 @@
  function projectMotoboyDelivery(remote,order={},current={}, {pendingExecution=false,tombstone=false}={}){
   const status=remote.status||'ASSIGNED', localStatus={CREATED:'open',ASSIGNED:'open',ACCEPTED:'open',PICKED_UP:'route',OUT_FOR_DELIVERY:'route',ARRIVED:'arrived',DELIVERED:'done',CANCELLED:'cancelled',FAILED:'issue',RETURNED:'issue',REDELIVERY:'open'}[status];
   if(!localStatus)throw new Error('CANONICAL_DELIVERY_STATUS_INVALID');
-  const coords=Array.isArray(order.coords)?order.coords:null,lat=order.latitude??order.lat??coords?.[0]??current.lat,lng=order.longitude??order.lng??coords?.[1]??current.lng;
+  const coords=Array.isArray(order.coords)?order.coords:null,shared=order.extensions?.x_rotamoto_navigation_coordinates;
+  const sharedValid=shared&&shared.provenance==='restaurant_order_coordinates'&&Number.isFinite(Number(shared.latitude))&&Math.abs(Number(shared.latitude))<=90&&Number.isFinite(Number(shared.longitude))&&Math.abs(Number(shared.longitude))<=180;
+  const lat=order.latitude??order.lat??coords?.[0]??(sharedValid?shared.latitude:undefined)??current.lat,lng=order.longitude??order.lng??coords?.[1]??(sharedValid?shared.longitude:undefined)??current.lng;
   const cancelled=tombstone||status==='CANCELLED';
   return {...current,...remote,id:current.id||remote.id,deliveryId:remote.id,orderId:remote.orderId||order.id||current.orderId||null,assignmentRevoked:false,
    driverId:remote.driverId||current.driverId||null,companyId:remote.companyId||order.companyId||current.companyId,

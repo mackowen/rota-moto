@@ -15,4 +15,10 @@ assert.equal(C.validateEntity('Delivery',{...base,status:'ASSIGNED',x_ifood_exte
 assert.equal(C.validateRouteMembership([{id:'r1',deliveryIds:['d1']},{id:'r2',deliveryIds:['d1']}]).valid,false);
 assert.equal(C.validateRouteMembership([{id:'r1',deliveryIds:['d1','d2']}]).valid,true);
 assert.equal(C.validateEntity('DeliveryProof',{...base,deliveryId:'d1',media:{mimeType:'image/png',sizeBytes:3,sha256:'a'.repeat(64),storageRef:{provider:'unconfigured',objectKey:'ref'}}}).valid,true);
+const projected=C.raceFromDelivery({id:'d1',companyId:'c1',orderId:'o1',status:'ASSIGNED',createdAt:'2026-10-01T00:00:00.000Z'},
+  {id:'o1',customer:'synthetic',extensions:{x_rotamoto_navigation_coordinates:{latitude:-23.5,longitude:-46.6,provenance:'restaurant_order_coordinates'}}});
+assert.equal(projected.lat,-23.5);assert.equal(projected.lng,-46.6);
+const untrustedCoordinates=C.raceFromDelivery({id:'d2',status:'ASSIGNED'},
+  {extensions:{x_rotamoto_navigation_coordinates:{latitude:91,longitude:0,provenance:'restaurant_order_coordinates'}}});
+assert.equal(untrustedCoordinates.lat,null,'invalid out-of-range coordinates remain unavailable');
 console.log('canonical domain schema validation: OK');
