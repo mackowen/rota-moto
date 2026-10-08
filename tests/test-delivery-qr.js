@@ -14,7 +14,7 @@ assert.match(htmlSource, /qr-decoder\.js/iu);
 assert.match(appSource, /BarcodeDetector/iu);
 assert.match(appSource, /jsQR\(/u, 'fallback usa decoder local');
 assert.match(appSource, /validateOnlineDeliveryQr/iu);
-assert.match(htmlSource, /Escanear QR da entrega/iu);
+assert.match(htmlSource, /(?:Ler|Escanear) QR da entrega/iu);
 
 const companyId = '11111111-1111-4111-8111-111111111111';
 const otherCompanyId = '22222222-2222-4222-8222-222222222222';
