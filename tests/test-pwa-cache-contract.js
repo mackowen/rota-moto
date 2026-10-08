@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');
 const index=fs.readFileSync(require.resolve('../index.html'),'utf8');
-assert.match(worker,/rota-moto-v42\.5/u,'service worker cache version is advanced for the current shell');
+assert.match(worker,/rota-moto-v42\.7/u,'service worker cache version is advanced for the current shell');
 assert.match(worker,/\/\^\\\/api/u,'API request path is excluded from Cache Storage');
 assert.match(worker,/url\.origin!==location\.origin/u,'cross-origin provider/CDN requests are not cached');
 assert.match(worker,/assetUrls\.has\(url\.href\)/u,'only exact versioned shell assets are eligible for cache');
@@ -12,7 +12,7 @@ assert.match(worker,/status:503/u,'missing offline asset fails as an explicit re
 assert.doesNotMatch(worker,/cache\.put\(/u,'active cache entries are not updated with a newer server shell');
 assert.match(index,/vendor\/leaflet\/leaflet\.css[\s\S]*vendor\/leaflet\/leaflet\.js/u,'offline shell loads local cartography renderer');
 assert.match(worker,/vendor\/leaflet\/leaflet\.js/u,'offline cache includes the map renderer');
-assert.match(index,/ocr\/normalization\.js\?v=1[\s\S]*ocr\/semantic-parser\.js\?v=1[\s\S]*ocr\/image-preprocessor\.js\?v=1[\s\S]*ocr\/pipeline\.js\?v=1[\s\S]*vendor\/tesseract\/tesseract\.min\.js\?v=5\.1\.1[\s\S]*navigation-workflow\.js\?v=1[\s\S]*app\.js\?v=42\.4/u,'offline shell loads OCR and navigation workflow dependencies before the app');
+assert.match(index,/ocr\/normalization\.js\?v=1[\s\S]*ocr\/semantic-parser\.js\?v=1[\s\S]*ocr\/image-preprocessor\.js\?v=1[\s\S]*ocr\/pipeline\.js\?v=1[\s\S]*vendor\/tesseract\/tesseract\.min\.js\?v=5\.1\.1[\s\S]*navigation-workflow\.js\?v=1[\s\S]*app\.js\?v=42\.6/u,'offline shell loads OCR and navigation workflow dependencies before the app');
 assert.match(worker,/delivery-qr\.js\?v=1/u,'offline shell contains QR signature validation');
 assert.match(worker,/qr-decoder\.js\?v=1/u,'offline shell contains the local QR decoder');
 assert.match(worker,/navigation-workflow\.js\?v=1/u,'offline shell contains route navigation progress and batching');
