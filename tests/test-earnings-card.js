@@ -26,8 +26,12 @@ assert.match(html, /<div id="customPeriod" class="customPeriod" hidden>/u,
   'custom earnings dates remain hidden until the custom period is selected');
 assert.match(styles, /\.customPeriod\{display:none;[^}]*\}\.customPeriod:not\(\[hidden\]\)\{display:grid\}/u,
   'date controls respect their HTML visibility state instead of overriding hidden');
-assert.match(app, /totals\.size\?formatCanonicalTotals\(totals\):completed\.length\?'Aguardando sincronização do Restaurante':'Nenhum ganho confirmado no período'/u,
-  'an empty period is distinguished from completed deliveries still awaiting canonical earnings');
+assert.match(app, /totals\.size\?formatCanonicalTotals\(totals\):'—'/u,
+  'an empty period uses a compact neutral value instead of wrapping explanatory text as a metric');
+assert.match(app, /completed\.length\?'Entrega concluída; ganho aguardando sincronização\.'\s*:\s*'Nenhum ganho canônico sincronizado neste período\.'/u,
+  'the explanatory state distinguishes pending synchronization from no canonical earnings');
+assert.match(app, /tripChart\.classList\.add\('chartEmpty'\)[\s\S]*Nenhuma entrega concluída com ganho canônico neste período/u,
+  'a period without canonical records uses a compact empty state instead of drawing a zero chart');
 assert.match(app, /earningsNote\.hidden=earnedTotals\.size>0\|\|completedToday\.length===0/u,
   'the home synchronization notice is hidden when no delivery completed today');
 assert.match(app, /gpsDistances=completed\.map\(gpsKmForRace\)\.filter\(value=>value>0\),km=gpsDistances\.reduce/u,
