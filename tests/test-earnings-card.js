@@ -8,8 +8,8 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
-assert.match(html, /<div class="stats">[\s\S]*?<b id="todayValue">[\s\S]*?<\/div><p id="earningsSyncNote" class="earningsSyncNote" role="status" hidden>/u,
-  'the pending synchronization message is outside the narrow numeric stat card');
+assert.match(html, /id="earningsSyncNote" class="earningsSyncNote" role="status" hidden[\s\S]*?<div class="homeWorkspace">/u,
+  'the synchronization message remains a distinct status outside the compact metrics module');
 assert.match(app, /todayValue'\)\.textContent=earnedTotals\.size\?formatCanonicalTotals\(earnedTotals\):'—'/u,
   'an absent canonical snapshot uses a compact neutral value');
 assert.match(app, /earningsNote\.hidden=earnedTotals\.size>0/u,

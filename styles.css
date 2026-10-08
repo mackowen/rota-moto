@@ -251,7 +251,7 @@ html[data-theme="auto"] .platform span{border-color:var(--line)}
 }
 /* Modal close e ícones de ação permanecem legíveis no tema atual. */
 #modalClose{background:var(--soft)!important;color:var(--ink)!important;border:1px solid var(--line)!important}
-html[data-resolved-theme="dark"] .primary,html[data-theme="auto"] .primary{background:color-mix(in srgb,var(--accent) 78%,#ffffff 22%)!important;color:#06100a!important;border-color:color-mix(in srgb,var(--accent) 78%,#ffffff 22%)!important}
+html[data-resolved-theme="dark"] .primary:not(#home .primary),html[data-theme="auto"] .primary:not(#home .primary){background:color-mix(in srgb,var(--accent) 78%,#ffffff 22%)!important;color:#06100a!important;border-color:color-mix(in srgb,var(--accent) 78%,#ffffff 22%)!important}
 html[data-resolved-theme="dark"] .workHighlight,html[data-theme="auto"] .workHighlight{background:var(--ink)!important;color:var(--card)!important;border-color:var(--line)!important;box-shadow:0 8px 18px #0006!important}
 html[data-resolved-theme="dark"] .urgentBadge,html[data-theme="auto"] .urgentBadge{background:#4a1820;color:#fecdd3}
 html[data-resolved-theme="dark"] .nextStop,html[data-theme="auto"] .nextStop{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
