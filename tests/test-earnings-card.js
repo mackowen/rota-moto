@@ -28,8 +28,8 @@ assert.match(styles, /\.customPeriod\{display:none;[^}]*\}\.customPeriod:not\(\[
   'date controls respect their HTML visibility state instead of overriding hidden');
 assert.match(app, /totals\.size\?formatCanonicalTotals\(totals\):'—'/u,
   'an empty period uses a compact neutral value instead of wrapping explanatory text as a metric');
-assert.match(app, /completed\.length\?'Entrega concluída; ganho aguardando sincronização\.'\s*:\s*'Nenhum ganho canônico sincronizado neste período\.'/u,
-  'the explanatory state distinguishes pending synchronization from no canonical earnings');
+assert.match(app, /completed\.length\?'Entrega concluída; ganho aguardando sincronização\.'\s*:\s*'Nenhum ganho confirmado neste período\.'/u,
+  'the explanatory state distinguishes pending synchronization from no confirmed earnings');
 assert.match(app, /tripChart\.classList\.add\('chartEmpty'\)[\s\S]*Nenhuma entrega concluída com ganho canônico neste período/u,
   'a period without canonical records uses a compact empty state instead of drawing a zero chart');
 assert.match(app, /earningsNote\.hidden=earnedTotals\.size>0\|\|completedToday\.length===0/u,

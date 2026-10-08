@@ -48,8 +48,11 @@ html[data-resolved-theme="dark"] .app {
 .brand b, .brand small { display: block; }
 .brand b { font-size: 16px; letter-spacing: -.035em; line-height: 1.15; }
 .brand small { margin-top: 2px; color: var(--moto-muted); font-size: 11px; }
-.top .syncStatus { max-width: 52%; margin: 0; padding: 0; border: 0; background: none; color: var(--moto-muted); font-size: 11px; text-align: right; }
-.top .syncStatus[data-state="online"], .top .syncStatus[data-state="synced"] { color: var(--moto-green-dark); }
+.top .syncStatus { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 7px; min-height: 32px; max-width: 150px; margin: 0; padding: 6px 10px; border: 1px solid var(--moto-line); border-radius: 999px; background: var(--moto-surface-soft); color: var(--moto-muted); font-size: 11px; font-weight: 650; line-height: 1.2; text-align: left; }
+.top .syncStatus::before { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: currentColor; content: ""; }
+.top .syncStatus[data-state="ready"], .top .syncStatus[data-state="online"], .top .syncStatus[data-state="synced"] { color: var(--moto-green-dark); }
+.top .syncStatus[data-state="offline"], .top .syncStatus[data-state="retry-wait"], .top .syncStatus[data-state="error"], .top .syncStatus[data-state="unauthenticated"], .top .syncStatus[data-state="attention"], .top .syncStatus[data-state="pending"] { color: #a04c14; }
+html[data-resolved-theme="dark"] .top .syncStatus[data-state="offline"], html[data-resolved-theme="dark"] .top .syncStatus[data-state="retry-wait"], html[data-resolved-theme="dark"] .top .syncStatus[data-state="error"], html[data-resolved-theme="dark"] .top .syncStatus[data-state="unauthenticated"], html[data-resolved-theme="dark"] .top .syncStatus[data-state="attention"], html[data-resolved-theme="dark"] .top .syncStatus[data-state="pending"] { color: #ffc36c; }
 .screen { width: 100%; max-width: 620px; margin: 0 auto; padding: 18px 16px 24px; }
 .screen.active { display: block; }
 .eyebrow { color: var(--moto-green-dark); font-size: 10px; font-weight: 800; letter-spacing: .105em; line-height: 1.25; }
@@ -124,6 +127,7 @@ html[data-resolved-theme="dark"] .app {
 #home .driver-last-completion > div:first-child small { margin-top: 2px; color: var(--moto-muted); font-size: 10px; }
 #home .driver-map-entry { display: inline-flex; align-items: center; justify-self: start; gap: 8px; min-height: 42px; padding: 4px; border: 0; background: transparent; color: var(--moto-green-dark); font-size: 12px; font-weight: 700; }
 #home button:focus-visible, #home a:focus-visible, nav button:focus-visible, .moreNavMenu button:focus-visible { outline: 3px solid color-mix(in srgb, var(--moto-green) 45%, transparent); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--moto-green) 52%, transparent); outline-offset: 2px; }
 
 nav[aria-label="Navegação principal"] { position: fixed; z-index: 2200; right: 0; bottom: 0; left: 0; transform: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; width: 100%; height: calc(64px + env(safe-area-inset-bottom)); margin: 0; padding: 5px 8px calc(5px + env(safe-area-inset-bottom)); border: 0; border-top: 1px solid var(--moto-line); border-radius: 0; background: var(--moto-surface); box-shadow: 0 -5px 18px rgb(14 31 20 / 5%); }
 nav[aria-label="Navegação principal"] button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 48px; padding: 4px 3px; border: 0; border-radius: 12px; background: transparent; color: var(--moto-muted); font-size: 10px; font-weight: 650; line-height: 1.1; }
@@ -143,21 +147,37 @@ nav[aria-label="Navegação principal"] button.active { color: var(--moto-green-
 .raceSearch { display: flex; align-items: center; gap: 8px; min-height: 46px; margin: 0 0 10px; padding: 0 12px; border: 1px solid var(--moto-line); border-radius: 13px; background: var(--moto-surface); }
 .raceSearch svg { flex: 0 0 auto; color: var(--moto-muted); }
 .raceSearch input { min-width: 0; min-height: 42px; margin: 0; border: 0; background: transparent; color: var(--moto-ink); font-size: 13px; }
+.raceFilters { display: grid; gap: 5px; margin-bottom: 9px; }
 .filterTabs, .historyPeriod { display: flex; gap: 6px; margin: 0 0 9px; padding: 0 0 3px; overflow-x: auto; scrollbar-width: thin; }
-.filterTabs { flex-wrap: wrap; overflow: visible; }
-.filterTabs button, .historyPeriod button { flex: 0 0 auto; min-height: 36px; padding: 0 12px; border: 1px solid var(--moto-line); border-radius: 999px; background: var(--moto-surface); color: var(--moto-muted); font-size: 11px; }
+.filterTabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 0; overflow: visible; }
+.filterTabs button, .historyPeriod button { min-width: 0; min-height: 40px; padding: 5px 7px; border: 1px solid var(--moto-line); border-radius: 999px; background: var(--moto-surface); color: var(--moto-muted); font-size: 11px; line-height: 1.15; }
 .filterTabs button.active, .historyPeriod button.active { border-color: var(--moto-green); background: var(--moto-green); color: #fff; }
+html[data-resolved-theme="dark"] .filterTabs button.active, html[data-resolved-theme="dark"] .historyPeriod button.active, html[data-resolved-theme="dark"] #earnings .periodTabs button.active { color: #082713; }
+.advancedRaceFilters { border: 1px solid var(--moto-line); border-radius: 13px; background: var(--moto-surface-soft); }
+.advancedRaceFilters > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 7px 12px; color: var(--moto-ink); cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; }
+.advancedRaceFilters > summary::-webkit-details-marker { display: none; }
+.advancedRaceFilters > summary::after { flex: 0 0 auto; color: var(--moto-muted); content: "⌄"; font-size: 16px; }
+.advancedRaceFilters[open] > summary { border-bottom: 1px solid var(--moto-line); }
+.advancedRaceFilters > summary small { margin-left: auto; color: var(--moto-muted); font-size: 11px; font-weight: 500; text-align: right; }
+.advancedRaceFilters .filterTabsAdvanced { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 9px 9px 0; }
+.advancedRaceFilters .historyPeriod { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 0; padding: 8px 9px 9px; }
 #raceList { display: grid; gap: 8px; }
 .screen#races .race { display: block; margin: 0; padding: 13px; border: 1px solid var(--moto-line); border-radius: 15px; background: var(--moto-surface); box-shadow: var(--moto-shadow); }
 .screen#races .raceTop { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; align-items: start; }
 .screen#races .raceTop > div { min-width: 0; }
-.screen#races .raceTop b { display: block; font-size: 13px; line-height: 1.3; }
-.screen#races .raceTop small { display: block; margin-top: 3px; color: var(--moto-muted); font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.screen#races .raceTop b { display: block; font-size: 14px; line-height: 1.3; }
+.screen#races .raceTop small { display: block; margin-top: 4px; color: var(--moto-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .screen#races .raceTop > strong { align-self: center; color: var(--moto-green-dark); font-size: 12px; white-space: nowrap; }
 .screen#races .raceMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 9px; color: var(--moto-muted); font-size: 10px; }
 .screen#races .race .status, .screen#races .race .badge { min-height: 25px; padding: 4px 9px; border-radius: 999px; font-size: 10px; font-weight: 750; }
-.screen#races .raceActions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; margin-top: 10px; }
-.screen#races .raceActions button { min-width: 0; min-height: 42px; margin: 0; padding: 8px 9px; border-radius: 11px; font-size: 12px; line-height: 1.2; overflow-wrap: normal; }
+.screen#races .raceActions { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; }
+.screen#races .racePrimaryAction { flex: 1 1 190px; min-width: 0; }
+.screen#races .raceActions button { min-width: 0; min-height: 44px; margin: 0; padding: 9px 11px; border-radius: 11px; font-size: 12px; line-height: 1.25; overflow-wrap: normal; }
+.screen#races .racePrimaryAction button { width: 100%; }
+.raceMoreActions { flex: 0 0 auto; min-width: 92px; }
+.raceMoreActions > summary, .deliverySecondaryActions > summary { display: grid; min-height: 44px; place-items: center; padding: 7px 10px; border: 1px solid var(--moto-line); border-radius: 11px; background: var(--moto-surface-soft); color: var(--moto-ink); cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
+.raceMoreActions > summary::-webkit-details-marker, .deliverySecondaryActions > summary::-webkit-details-marker { display: none; }
+.raceMoreActions > div { display: grid; gap: 7px; margin-top: 7px; }
 .screen#races .raceActions button.primary { background: var(--moto-green); color: #fff; }
 .screen#races .raceActions button.secondary { border-color: var(--moto-line); background: var(--moto-surface-soft); color: var(--moto-ink); }
 
@@ -175,8 +195,16 @@ nav[aria-label="Navegação principal"] button.active { color: var(--moto-green-
 .driver-delivery-facts span, .driver-delivery-facts b { display: block; }
 .driver-delivery-facts span { color: var(--moto-muted); font-size: 10px; }
 .driver-delivery-facts b { margin-top: 3px; font-size: 13px; overflow-wrap: anywhere; }
-.driver-delivery-actions { display: grid; gap: 8px; }
-.driver-delivery-actions button, .driver-map-action { width: 100%; min-width: 0; min-height: 48px; margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.25; white-space: normal; }
+.driver-delivery-actions { display: flex; align-items: flex-start; gap: 8px; }
+.driver-delivery-actions > button.primary { flex: 1 1 220px; }
+.driver-delivery-actions button, .driver-map-action { min-width: 0; min-height: 48px; margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.25; white-space: normal; }
+.deliverySecondaryActions { position: relative; flex: 0 1 148px; min-width: 112px; }
+.deliverySecondaryActions > div { display: grid; gap: 7px; margin-top: 7px; }
+.deliverySecondaryActions > div button { width: 100%; }
+.arrivalContext { display: grid; gap: 3px; padding: 11px 12px; border-left: 3px solid var(--moto-green); border-radius: 0 11px 11px 0; background: var(--moto-green-soft); }
+.arrivalContext span { color: var(--moto-green-dark); font-size: 10px; font-weight: 800; letter-spacing: .07em; }
+.arrivalContext b { font-size: 14px; }
+.arrivalContext small { color: var(--moto-muted); font-size: 12px; line-height: 1.4; }
 .driver-delivery-actions button.primary { background: var(--moto-green); color: #fff; }
 .driver-delivery-actions button.secondary, .driver-map-action { border: 1px solid var(--moto-line); background: var(--moto-surface-soft); color: var(--moto-ink); }
 .driver-map-action { display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -213,6 +241,7 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
 #mapScreen .pageHead h1 { font-size: 21px; }
 #mapScreen .trackingBadge { max-width: 130px; margin-left: auto; color: var(--moto-muted); font-size: 10px; }
 #mapScreen .mapWrap { position: relative; height: min(56dvh, 520px); min-height: 300px; overflow: hidden; border: 1px solid var(--moto-line); border-radius: 17px; background: var(--moto-surface-soft); }
+#mapScreen .leaflet-container { background: var(--moto-surface-soft); }
 #mapScreen .workRoadStatus { width: auto; margin: 9px 0 0; padding: 9px 11px; border: 1px solid var(--moto-line); border-radius: 11px; background: var(--moto-surface); color: var(--moto-muted); font-size: 11px; line-height: 1.4; }
 #mapScreen .workRoadStatus:empty { display: none; }
 #mapScreen .mapEmpty { display: grid; position: absolute; z-index: 2; inset: 0; align-content: center; justify-items: center; gap: 6px; padding: 24px; background: var(--moto-surface-soft); text-align: center; }
@@ -220,10 +249,16 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
 #mapScreen .mapEmpty small { max-width: 32ch; color: var(--moto-muted); font-size: 12px; line-height: 1.45; }
 #mapScreen .mapEmpty[hidden] { display: none; }
 #mapScreen .nextStop { margin: 10px 0 0; padding: 14px; border: 1px solid var(--moto-line); border-radius: 15px; background: var(--moto-surface); box-shadow: var(--moto-shadow); }
+#mapScreen .nextStop .eyebrow { display: block; font-size: 10px; }
+#mapScreen .workLegInfo { display: flex; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px solid var(--moto-line); border-bottom: 1px solid var(--moto-line); color: var(--moto-muted); font-size: 11px; }
 #mapScreen .nextStop > b { display: block; margin: 5px 0; font-size: 16px; }
 #mapScreen .nextStop > small { display: block; color: var(--moto-muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 #mapScreen .nextBtns { display: grid; gap: 7px; margin-top: 10px; }
 #mapScreen .nextBtns button { min-height: 46px; margin: 0; border-radius: 11px; font-size: 12px; }
+#mapScreen .mapProviderOptions { min-width: 0; }
+#mapScreen .mapProviderOptions > summary { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--moto-line); border-radius: 11px; background: var(--moto-surface-soft); color: var(--moto-ink); cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; }
+#mapScreen .mapProviderOptions > summary::-webkit-details-marker { display: none; }
+#mapScreen .mapProviderOptions > div { display: grid; gap: 7px; margin-top: 7px; }
 #mapScreen .workActions { display: none; }
 #mapScreen .mapStatus { margin: 10px 0 0; color: var(--moto-muted); font-size: 11px; }
 
@@ -234,16 +269,32 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
 #earnings .earnHero > span { color: var(--moto-muted); font-size: 11px; }
 #earnings .earnHero > b { font-size: clamp(29px, 8vw, 38px); line-height: 1.1; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
 #earnings .earnHero > small { color: var(--moto-muted); font-size: 11px; }
-#earnings .earnGoalMini, #earnings .metricGrid > div, #earnings .chartCard, #earnings .bestBox { border: 1px solid var(--moto-line); border-radius: 14px; background: var(--moto-surface); box-shadow: none; }
+#earnings .earnQuickFacts { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 8px 0 10px; padding: 11px 0; border-top: 1px solid var(--moto-line); border-bottom: 1px solid var(--moto-line); }
+#earnings .earnQuickFacts > div { display: grid; gap: 3px; min-width: 0; padding: 0 12px; }
+#earnings .earnQuickFacts > div + div { border-left: 1px solid var(--moto-line); }
+#earnings .earnQuickFacts span { color: var(--moto-muted); font-size: 11px; }
+#earnings .earnQuickFacts b { font-size: 15px; font-variant-numeric: tabular-nums; }
+#earnings .earnGoalMini, #earnings .earnAvailableFacts > div, #earnings .earnUnavailable, #earnings .chartCard, #earnings .bestBox { border: 1px solid var(--moto-line); border-radius: 14px; background: var(--moto-surface); box-shadow: none; }
 #earnings .earnGoalMini { padding: 12px 14px; }
-#earnings .metricGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 9px 0; }
-#earnings .metricGrid > div { min-width: 0; min-height: 63px; padding: 10px 11px; }
-#earnings .metricGrid span { display: block; color: var(--moto-muted); font-size: 10px; line-height: 1.3; }
-#earnings .metricGrid b { display: block; margin-top: 4px; color: var(--moto-ink); font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+#earnings .earnDetailsSection { display: grid; gap: 8px; margin: 12px 0; }
+#earnings .earnDetailsSection > h2 { margin: 0; font-size: 15px; }
+#earnings .earnAvailableFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+#earnings .earnAvailableFacts > div { min-width: 0; padding: 10px 11px; }
+#earnings .earnAvailableFacts span { display: block; color: var(--moto-muted); font-size: 11px; line-height: 1.3; }
+#earnings .earnAvailableFacts b { display: block; margin-top: 4px; color: var(--moto-ink); font-size: 15px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+#earnings .earnUnavailable { padding: 10px 12px; background: var(--moto-surface-soft); }
+#earnings .earnUnavailable h3 { margin: 0; font-size: 12px; }
+#earnings .earnUnavailable p { margin: 3px 0 8px; color: var(--moto-muted); font-size: 11px; line-height: 1.4; }
+#earnings .earnUnavailable dl { display: grid; gap: 0; margin: 0; }
+#earnings .earnUnavailable dl > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; border-top: 1px solid var(--moto-line); }
+#earnings .earnUnavailable dt { color: var(--moto-muted); font-size: 11px; }
+#earnings .earnUnavailable dd { margin: 0; color: var(--moto-ink); font-size: 13px; font-weight: 700; }
 #earnings .chartCard { margin: 8px 0; padding: 13px; }
 #earnings .chartCard .sectionHead { margin: 0 0 8px; }
 #earnings .chartCard .sectionHead h2 { margin: 0; font-size: 14px; }
 #earnings .chartCard .barChart { overflow-x: auto; }
+#earnings .barCol { min-width: 44px; }
+#earnings .barVal, #earnings .barLabel { font-size: 10px; line-height: 1.25; }
 #earnings #tripChart.chartEmpty { display: grid; min-height: 64px; place-items: center; }
 #earnings #tripChart .chartEmptyMessage { margin: 0; color: var(--moto-muted); font-size: 12px; line-height: 1.45; text-align: center; }
 #earnings .bestBox { padding: 13px; }
@@ -278,10 +329,17 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
   #home .driver-map-entry { grid-area: map; }
   #raceList { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   .screen#races .raceActions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #earnings .metricGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #earnings .earnAvailableFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #earnings .earnUnavailable dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #earnings .earnUnavailable dl > div { padding: 5px 10px; border-top: 0; border-left: 1px solid var(--moto-line); }
+  #earnings .earnUnavailable dl > div:first-child { border-left: 0; }
   #earnings .earnHero { padding: 22px; }
   #earnings .chartCard { padding: 18px; }
   #mapScreen .mapWrap { height: min(58dvh, 640px); }
+  #mapScreen .nextBtns { grid-template-columns: minmax(0, 1fr) minmax(0, auto); align-items: start; }
+  #mapScreen .nextBtns > .racePrimaryAction, #mapScreen .nextBtns > .raceMoreActions, #mapScreen .nextBtns > #nextSupport { grid-column: 1 / -1; }
+  #mapScreen .mapProviderOptions { grid-column: 1 / -1; }
+  #mapScreen .mapProviderOptions > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 7px; }
 }
 @media (min-width: 1100px) {
   .app { grid-template-columns: 88px minmax(0, 1fr); grid-template-rows: 72px minmax(0, 1fr); }
@@ -308,5 +366,37 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
   #home .driver-today-stat span { font-size: 10px; }
   #home .driver-today-stat strong { font-size: 14px; }
   #home .driver-section-head .driver-link { flex: 0 0 auto; padding-inline: 0; }
-  .screen#races .raceActions button { font-size: 11px; }
+  .top { min-height: 58px; height: 58px; gap: 7px; padding-inline: 11px; }
+  .top .brand { gap: 7px; }
+  .top .brandMark { width: 32px; height: 32px; border-radius: 10px; }
+  .top .brand b { font-size: 15px; }
+  .top .brand small { font-size: 10px; }
+  .top .syncStatus { max-width: 111px; min-height: 30px; padding-inline: 8px; font-size: 10px; }
+  #home.driver-home.active { gap: 10px; }
+  #home .driver-home-intro h1 { font-size: 22px; }
+  #home .driver-home-intro p { font-size: 12px; }
+  #home .driver-focus { padding: 13px; }
+  #home .driver-focus h2 { margin-top: 8px; font-size: 19px; }
+  #home .driver-focus-address { margin-top: 9px; padding: 10px; }
+  #home .driver-focus-actions { gap: 6px; }
+  #home .driver-primary, #home .driver-secondary { min-height: 46px; padding: 9px 11px; }
+  #home .driver-today { padding-block: 10px; }
+  #home .driver-today-stat span { font-size: 10px; }
+  #home .driver-today-stat strong { font-size: 14px; }
+  #home .driver-goal { margin-top: 8px; padding-top: 8px; }
+  #home .driver-queue { padding: 12px 13px 10px; }
+  .screen#races .raceActions button { font-size: 12px; }
+  .deliveryScreen .driver-delivery-detail { gap: 10px; padding: 13px; }
+  .driver-delivery-heading h2 { font-size: 20px; }
+  .driver-delivery-actions { align-items: stretch; }
+  .driver-delivery-actions > button.primary { flex-basis: 100%; }
+  .deliverySecondaryActions { flex: 1 1 100%; }
+  .deliverySecondaryActions > summary { min-height: 42px; }
+  #earnings .earnHero { gap: 4px; padding: 14px; }
+  #earnings .earnHero > b { font-size: clamp(32px, 9vw, 40px); }
+  #earnings .earnQuickFacts > div { padding-inline: 10px; }
+  #earnings .earnUnavailable dl { gap: 0; }
+  #mapScreen .mapWrap { height: min(48dvh, 430px); min-height: 270px; }
+  #mapScreen .nextBtns { grid-template-columns: 1fr; }
+  #mapScreen .mapProviderOptions > div { grid-template-columns: 1fr; }
 }
