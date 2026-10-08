@@ -25,6 +25,8 @@ if(appSource.includes("function recordDeliveryEvent(type,r,payload={}")){
   const builder=appSource.slice(appSource.indexOf('async function buildSyncPacket'),appSource.indexOf('function downloadSyncPacket'));
   assert.match(builder,/deliveries:\[\]/,'Motoboy must not write canonical Delivery directly');
   assert.match(builder,/earnings:\[\]/,'Motoboy must not publish authoritative Earning');
+  assert.match(builder,/RotaMotoSyncReconciliation\.isPendingFact\(record\)/,'packet construction and status use one canonical pending-fact rule');
+  assert.match(appSource,/if\(!RotaMotoSyncReconciliation\.isPendingFact\(record\)\)continue/,'canonical facts pulled from the server never create an endless sync retry');
   assert(!builder.includes('packet.data.races=')&&!builder.includes('packet.data.settings='),'local projections are excluded from canonical sync');
 }else{
   assert.match(appSource,/canonicalEarningFromOrder\(order,companyId\)/,'Restaurant calculates canonical Earning from its existing rule');
