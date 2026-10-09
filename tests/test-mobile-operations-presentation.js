@@ -23,6 +23,10 @@ assert.match(app, /async function submitAvailabilityCommand[\s\S]*expectedRevisi
   'availability updates persist an idempotent server command with revision checking');
 assert.match(app, /async function renewDriverAvailability[\s\S]*visibilityState==='visible'/u,
   'availability leases renew only while the authenticated app is visible');
+assert.match(app, /async function restoreDriverAvailability\([\s\S]*driverAvailabilityUnconfirmed=!!driverAvailability/u,
+  'availability restored from IndexedDB stays explicitly unconfirmed until the server responds');
+assert.match(app, /async function refreshDriverAvailability\([\s\S]*catch\(error\)\{driverAvailabilityUnconfirmed=true/u,
+  'a failed availability read cannot present the last cached Online state as currently confirmed');
 assert.match(baseCss, /--canvas:#F3F5F9[\s\S]*--accent:#079669/u,
   'light surfaces and operational accent use the refreshed semantic palette');
 assert.match(baseCss, /--canvas:#0B0D12[\s\S]*--surface:#171B24[\s\S]*--accent:#16C784/u,
