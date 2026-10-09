@@ -1,31 +1,19 @@
 /* Mobile execution surfaces, matching the approved RotaMoto reference. */
 .app {
-  --moto-canvas: #f4f6f5;
-  --moto-surface: #fff;
-  --moto-surface-soft: #f8faf9;
-  --moto-ink: #17231d;
-  --moto-muted: #66746c;
-  --moto-line: #e2e9e4;
-  --moto-green: #14934f;
-  --moto-green-dark: #08733b;
-  --moto-green-soft: #e8f5ed;
-  --moto-shadow: 0 5px 18px rgb(17 38 26 / 6%);
+  --moto-canvas: var(--canvas);
+  --moto-surface: var(--surface);
+  --moto-surface-soft: var(--surface-soft);
+  --moto-ink: var(--text-primary);
+  --moto-muted: var(--text-muted);
+  --moto-line: var(--border-subtle);
+  --moto-green: var(--accent);
+  --moto-green-dark: var(--accent);
+  --moto-green-soft: var(--accent-soft);
+  --moto-shadow: var(--elevation-1);
   min-height: 100dvh;
   padding: 0 0 calc(78px + env(safe-area-inset-bottom));
   background: var(--moto-canvas);
   color: var(--moto-ink);
-}
-html[data-resolved-theme="dark"] .app {
-  --moto-canvas: #0c1411;
-  --moto-surface: #151f1a;
-  --moto-surface-soft: #1b2922;
-  --moto-ink: #f1f6f2;
-  --moto-muted: #adbbb2;
-  --moto-line: #2b3b32;
-  --moto-green: #20bd68;
-  --moto-green-dark: #67dc98;
-  --moto-green-soft: #193a29;
-  --moto-shadow: 0 5px 18px rgb(0 0 0 / 18%);
 }
 .app main { min-width: 0; }
 .top {
@@ -399,4 +387,38 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
   #mapScreen .mapWrap { height: min(48dvh, 430px); min-height: 270px; }
   #mapScreen .nextBtns { grid-template-columns: 1fr; }
   #mapScreen .mapProviderOptions > div { grid-template-columns: 1fr; }
+}
+
+.availability-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--moto-line);
+  border-radius: 15px;
+  background: var(--moto-surface);
+}
+.availability-panel > div { min-width: 0; }
+.availability-kicker { display: block; color: var(--moto-muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; }
+.availability-panel strong { display: block; margin-top: 3px; font-size: 14px; line-height: 1.25; }
+.availability-panel p { margin: 4px 0 0; color: var(--moto-muted); font-size: 11px; line-height: 1.35; }
+.availability-toggle { min-width: 116px; min-height: 44px; padding: 9px 13px; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 750; }
+.availability-toggle[data-state="online"] { border-color: var(--border-strong); background: var(--surface); color: var(--text-primary); }
+.availability-toggle[data-state="pending"], .availability-toggle:disabled { border-color: var(--border-subtle); background: var(--surface-soft); color: var(--text-muted); cursor: not-allowed; }
+.home-quick-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.quick-action { display: flex; min-width: 0; min-height: 48px; align-items: center; justify-content: center; gap: 7px; padding: 8px 9px; border: 1px solid var(--moto-line); border-radius: 12px; background: var(--moto-surface); color: var(--moto-ink); font-size: 12px; font-weight: 700; line-height: 1.2; }
+.quick-action svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--accent); }
+.quick-action:focus-visible, .availability-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (min-width: 700px) and (max-width: 1099px) {
+  .driver-home { max-width: 980px; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); align-items: start; }
+  .driver-home-intro, .availability-panel, .home-quick-actions, #earningsSyncNote, #homeDeliveryFocus, #homeNoActive, .driver-queue, .driver-last-completion, .journeySummary { grid-column: 1 / -1; }
+  #home .driver-today { grid-column: 1; }
+  #home .driver-queue { grid-row: span 2; }
+}
+@media (max-width: 380px) {
+  .home-quick-actions { grid-template-columns: 1fr; }
+  .quick-action { justify-content: flex-start; padding-inline: 13px; }
+  .availability-panel { grid-template-columns: minmax(0, 1fr); }
+  .availability-toggle { width: 100%; }
 }

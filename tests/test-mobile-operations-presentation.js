@@ -13,6 +13,20 @@ const workflow = fs.readFileSync(path.join(root, 'execution-workflow.js'), 'utf8
 
 assert.match(html, /id="syncStatus"[^>]+role="status" aria-live="polite"/u,
   'connection state remains announced to assistive technology');
+assert.match(html, /id="availabilityState"[\s\S]*id="availabilityHelp"[\s\S]*id="availabilityToggle"/u,
+  'operational availability is a distinct, accessible control with an explicit server-confirmation state');
+assert.match(html, /class="home-quick-actions"[\s\S]*id="scanDeliveryQrBtn"[\s\S]*id="newRaceBtn"[\s\S]*id="mapWorkBtn"/u,
+  'QR, comanda and existing work-mode entry points remain reachable from Home with an active delivery');
+assert.match(baseCss, /\.captureBadge:not\(\[hidden\]\)\s*\{\s*display:\s*flex\s*\}/u,
+  'the captured-photo badge is visible only after the app removes its hidden state');
+assert.match(app, /async function submitAvailabilityCommand[\s\S]*expectedRevision[\s\S]*commandId/u,
+  'availability updates persist an idempotent server command with revision checking');
+assert.match(app, /async function renewDriverAvailability[\s\S]*visibilityState==='visible'/u,
+  'availability leases renew only while the authenticated app is visible');
+assert.match(baseCss, /--canvas:#F3F5F9[\s\S]*--accent:#079669/u,
+  'light surfaces and operational accent use the refreshed semantic palette');
+assert.match(baseCss, /--canvas:#0B0D12[\s\S]*--surface:#171B24[\s\S]*--accent:#16C784/u,
+  'dark surfaces are graphite and reserve green for actions and positive state');
 assert.match(app, /box\.setAttribute\('aria-label',details\)/u,
   'the compact header label retains the full synchronization detail accessibly');
 assert.match(app, /box\.textContent=attention\?'Revisar sincronização':!online\?'Offline'/u,
