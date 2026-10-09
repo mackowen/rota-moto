@@ -49,8 +49,10 @@ assert.match(app, /function deliveryDetailActions\(r,status,allowed\)[\s\S]*allo
   'delivery detail gives the first canonical action priority and keeps alternatives available');
 assert.match(app, /status==='ARRIVED'\?'No destino'/u,
   'arrival gets a distinct destination state label');
-assert.match(app, /status==='ARRIVED'\?'<div class="arrivalContext"/u,
-  'arrival explains the valid next step without adding a transition');
+assert.match(app, /status==='ARRIVED'\?`<div class="arrivalContext"[\s\S]*r\.isReturn\?'Aguardando registro de entrega da mercadoria':'Confirme a entrega'[\s\S]*r\.isReturn\?'A confirmação definitiva cabe ao restaurante responsável\.'/u,
+  'arrival explains customer delivery or operational return without adding a transition');
+assert.match(app, /function deliveryDetailActions\(r,status,allowed\)\{if\(r\.isReturn\|\|!allowed\.length\)/u,
+  'return deliveries cannot invoke customer-completion actions');
 assert.match(workflow, /ARRIVED:[\s\S]*deliver[\s\S]*fail[\s\S]*return/u,
   'the presentation continues to derive arrival options from the canonical workflow');
 

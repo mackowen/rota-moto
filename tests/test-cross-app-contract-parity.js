@@ -121,6 +121,17 @@ for (const contract of [current, sibling]) {
 for (const contract of [current, sibling]) {
   validateV1RevisionMetadata(contract);
   validateV1PacketAndEvent(contract);
+  const returnRace = contract.raceFromDelivery({ id: 'return-1', companyId: 'company-1', orderId: 'order-1', driverId: 'driver-1',
+    status: 'ASSIGNED', version: 1, extensions: { x_rotamoto_delivery_type: 'RETURN', x_rotamoto_return_of_delivery_id: 'delivery-1',
+      x_rotamoto_return_reason: 'cancelamento após coleta', x_rotamoto_return_destination: { name: 'Loja QA', address: 'Rua A, 1' } } },
+  { id: 'order-1', customer: { name: 'Cliente privado', phone: '11999990000' }, address: 'Endereço do cliente', value: 99, items: [{ name: 'Item privado' }] });
+  assert.equal(returnRace.isReturn, true, 'devolução precisa ser distinguida de entrega ao cliente');
+  assert.equal(returnRace.address, 'Rua A, 1');
+  assert.equal(returnRace.client, 'Loja QA');
+  assert.equal(returnRace.phone, '', 'devolução não deve expor telefone do cliente original');
+  assert.equal(returnRace.value, 0, 'devolução não deve duplicar valor financeiro');
+  assert.deepEqual(plain(returnRace.items), [], 'devolução não deve ser renderizada como nova venda');
+  assert.equal(returnRace.returnOfDeliveryId, 'delivery-1');
   assert.equal(contract.canTransition('ASSIGNED', 'ACCEPTED'), true);
   assert.equal(contract.canTransition('DELIVERED', 'ASSIGNED'), false);
   assert.equal(contract.normalizeDeliveryStatus('ATRIBUIDA', 'restaurante'), 'ASSIGNED');
