@@ -15,6 +15,14 @@ assert.match(html, /id="syncStatus"[^>]+role="status" aria-live="polite"/u,
   'connection state remains announced to assistive technology');
 assert.match(html, /id="availabilityState"[\s\S]*id="availabilityHelp"[\s\S]*id="availabilityToggle"/u,
   'operational availability is a distinct, accessible control with an explicit server-confirmation state');
+assert.match(html, /class="availability-panel presence-panel"[\s\S]*id="restaurantPresenceState"[\s\S]*id="restaurantPresenceHelp"[\s\S]*class="presence-actions"[\s\S]*id="restaurantCheckIn"[\s\S]*id="restaurantCheckOut"[\s\S]*id="restaurantPresenceQr"/u,
+  'presence copy and existing check-in, check-out and QR controls remain grouped and available');
+assert.match(css, /\.availability-panel\.presence-panel\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/u,
+  'presence copy and actions use separate rows so action intrinsic width cannot squeeze the status text');
+assert.match(css, /#home \.availability-panel\.presence-panel\s*\{\s*grid-column:\s*1\s*\/\s*-1;\s*\}/u,
+  'desktop presence panel spans the dashboard columns instead of being placed in a narrow secondary column');
+assert.match(css, /\.availability-panel\.presence-panel \.presence-actions\s*\{\s*width:\s*100%;\s*\}/u,
+  'presence controls use the full panel width and preserve their existing wrapping behavior');
 assert.match(html, /class="home-quick-actions"[\s\S]*id="scanDeliveryQrBtn"[\s\S]*id="newRaceBtn"[\s\S]*id="mapWorkBtn"/u,
   'QR, comanda and existing work-mode entry points remain reachable from Home with an active delivery');
 assert.match(baseCss, /\.captureBadge:not\(\[hidden\]\)\s*\{\s*display:\s*flex\s*\}/u,
