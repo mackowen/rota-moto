@@ -133,7 +133,7 @@ async function uploadPendingProofMedia({apiBase=window.ROTA_MOTO_API_BASE||'/api
   }catch(error){proof.sync={...(proof.sync||{}),state:'failed',uploadState:'failed',error:error.message||'MEDIA_UPLOAD_FAILED'};const race=state.races.find(row=>(row.deliveryId||row.id)===proof.deliveryId||row.sync?.canonicalId===proof.deliveryId);if(race)race.proofSyncState='failed';await tx(['proofs','races'],'readwrite',stores=>{stores.objectStore('proofs').put(proof);if(race)stores.objectStore('races').put(race)})}
  }
 }
-let syncCsrfToken=null,syncSession=null,syncBootstrapReady=false,syncScheduleTimer=null,syncLastStatus={state:'offline',pending:0,conflicts:0,rejected:0,lastSuccessAt:null,lastErrorCode:null};
+let syncCsrfToken=null,syncSession=null,syncBootstrapReady=false,syncScheduleTimer=null,syncRetryAttempt=0,syncLastStatus={state:'offline',pending:0,conflicts:0,rejected:0,lastSuccessAt:null,lastErrorCode:null};
 const syncCoordinator=RotaMotoSyncReconciliation.createCoordinator({locks:navigator.locks,lockName:`${DB_NAME}:server-sync`});
 function stableSyncValue(value){if(Array.isArray(value))return `[${value.map(stableSyncValue).join(',')}]`;if(value&&typeof value==='object')return `{${Object.keys(value).filter(key=>key!=='sync'&&key!=='baseVersion').sort().map(key=>`${JSON.stringify(key)}:${stableSyncValue(value[key])}`).join(',')}}`;return JSON.stringify(value)}
 function syncOperationKey(type,record){return `operation:${type}:${record.eventId||record.id}`}
@@ -187,7 +187,7 @@ async function performServerSync({apiBase=window.ROTA_MOTO_API_BASE||'/api',csrf
  await persistSyncAck(queued.packet,ack,queued.snapshots||captureSyncSnapshots(queued.packet));await tx('outbox','readwrite',s=>s.delete(queueId));
  let cursor=await tx('syncState','readonly',s=>new Promise((resolve,reject)=>{const q=s.get('pull:cursor');q.onsuccess=()=>resolve(q.result?.value||null);q.onerror=()=>reject(q.error)}));let pulled=0,hasMore=true,pages=0;
  while(hasMore&&pages++<100){const query=new URLSearchParams({deviceId,limit:'100'});if(cursor)query.set('cursor',cursor);const page=await send(`${base}/pull?${query}`);if(page.companyId!==session.companyId||page.deviceId!==deviceId||!Array.isArray(page.events))throw new Error('SYNC_PULL_INVALID');const count=await reconcileMotoPullPage(page);pulled+=count;cursor=page.nextCursor||cursor;hasMore=!!page.hasMore}
- await compactSyncStores();await setSyncStatus({state:'ready',lastSuccessAt:Date.now(),lastErrorCode:null,lastPullAt:Date.now(),installationId:registration.installationId});const status=await getSyncStatus();if(status.pending||hasMore)scheduleServerSync(0);return {packetId:queued.packet.packetId,operationResults:ack.operationResults,pulled,cursor,hasMore};
+ syncRetryAttempt=0;await compactSyncStores();await setSyncStatus({state:'ready',lastSuccessAt:Date.now(),lastErrorCode:null,lastPullAt:Date.now(),installationId:registration.installationId});const status=await getSyncStatus();if(status.pending||hasMore)scheduleServerSync(0);return {packetId:queued.packet.packetId,operationResults:ack.operationResults,pulled,cursor,hasMore};
 }
 async function persistSyncAck(packet,ack,snapshots={}){
  RotaMotoSyncReconciliation.validateOperationAck(packet,ack,{companyId:syncSession?.companyId,deviceId:packet?.deviceId});const results=ack.operationResults;
