@@ -89,6 +89,7 @@ assert.equal(sibling.SCHEMA_VERSION, 1);
 assert.deepEqual(plain(current.STATUS), plain(sibling.STATUS), 'enums Delivery devem coincidir');
 assert.deepEqual(plain(current.TRANSITIONS), plain(sibling.TRANSITIONS), 'transições Delivery devem coincidir');
 assert.deepEqual(plain(current.EXECUTION_EVENT_STATUS), plain(sibling.EXECUTION_EVENT_STATUS), 'eventos de execução devem coincidir');
+assert.deepEqual(plain(current.RETURN_EVENT_TYPES), plain(sibling.RETURN_EVENT_TYPES), 'fatos do ciclo de devolução devem coincidir');
 assert.deepEqual(plain(current.WRITE_AUTHORITY), plain(sibling.WRITE_AUTHORITY), 'ownership/authorities devem coincidir');
 assert.deepEqual(plain(current.SYNC_ACK), plain(sibling.SYNC_ACK), 'vocabulário de ACK deve coincidir');
 assert.deepEqual(plain(current.ENTITY_SCHEMAS), plain(sibling.ENTITY_SCHEMAS), 'required fields e tipos compartilhados devem coincidir');

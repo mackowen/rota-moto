@@ -32,17 +32,29 @@
   const sharedValid=shared&&shared.provenance==='restaurant_order_coordinates'&&Number.isFinite(Number(shared.latitude))&&Math.abs(Number(shared.latitude))<=90&&Number.isFinite(Number(shared.longitude))&&Math.abs(Number(shared.longitude))<=180;
   const lat=order.latitude??order.lat??coords?.[0]??(sharedValid?shared.latitude:undefined)??current.lat,lng=order.longitude??order.lng??coords?.[1]??(sharedValid?shared.longitude:undefined)??current.lng;
   const cancelled=tombstone||status==='CANCELLED';
+  const extensions=remote.extensions||{},isReturn=extensions.x_rotamoto_delivery_type==='RETURN';
+  const destination=extensions.x_rotamoto_return_destination||{};
   return {...current,...remote,id:current.id||remote.id,deliveryId:remote.id,orderId:remote.orderId||order.id||current.orderId||null,assignmentRevoked:false,
    driverId:remote.driverId||current.driverId||null,companyId:remote.companyId||order.companyId||current.companyId,
    canonicalStatus:status,status:cancelled?'cancelled':pendingExecution?current.status:localStatus,
    acceptedAt:pendingExecution?current.acceptedAt:remote.acceptedAt||current.acceptedAt,
-   startedAt:pendingExecution?current.startedAt:remote.pickedUpAt||current.startedAt,
+   startedAt:pendingExecution?current.startedAt:(isReturn?extensions.x_rotamoto_return_started_at:remote.pickedUpAt)||current.startedAt,
    arrivedAt:pendingExecution?current.arrivedAt:remote.arrivedAt||current.arrivedAt,
    completedAt:pendingExecution?current.completedAt:remote.completedAt||current.completedAt,
    distanceKm:current.distanceKm??(Number.isFinite(Number(remote.estimatedDistanceM))?Number(remote.estimatedDistanceM)/1000:current.distanceKm),
    actualDistanceM:pendingExecution?current.actualDistanceM:remote.actualDistanceM??current.actualDistanceM,
    client:order.customer?.name||order.customer||current.client||'',phone:order.phone||order.customer?.phone||current.phone||'',
-   address:order.address||current.address||'',lat:Number.isFinite(Number(lat))?Number(lat):null,lng:Number.isFinite(Number(lng))?Number(lng):null,
+   isReturn,deliveryType:isReturn?'return':current.deliveryType,
+   custodyState:extensions.x_rotamoto_custody_state||current.custodyState||null,
+   returnStage:!isReturn?current.returnStage:
+     extensions.x_rotamoto_custody_state==='AWAITING_RESTAURANT_RECEIPT'?'awaiting-receipt':
+     extensions.x_rotamoto_custody_state==='RECEIVED'?'received':
+     remote.status==='ARRIVED'?'arrived':remote.status==='OUT_FOR_DELIVERY'?'started':null,
+   returnExpectedVersion:pendingExecution?(current.returnExpectedVersion||remote.version):Number(remote.version||1),
+   address:isReturn?(destination.address||'Endereço do restaurante não informado'):(order.address||current.address||''),
+   client:isReturn?(destination.name||'Restaurante responsável'):(order.customer?.name||order.customer||current.client||''),
+   lat:isReturn?(destination.latitude??null):(Number.isFinite(Number(lat))?Number(lat):null),
+   lng:isReturn?(destination.longitude??null):(Number.isFinite(Number(lng))?Number(lng):null),
    orderNo:order.num||order.orderNo||current.orderNo||'',value:order.value??order.deliveryFee??current.value??0,
    deliveryFee:order.deliveryFee??order.value??current.deliveryFee??null,notes:order.obs||order.notes||current.notes||'',
    items:Array.isArray(order.items)?order.items:current.items||[],deleted:!!(tombstone||remote.deletedAt||remote.deleted),
