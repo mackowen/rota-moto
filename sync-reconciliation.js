@@ -19,8 +19,10 @@
  }
  function statusFromAck(status){return ['accepted','duplicate','rejected','conflict'].includes(status)?status:'invalid'}
  function isPendingFact(record){return !!record&&!record.acknowledgedAt&&!record.localOnly&&!['synced','canonical'].includes(record.sync?.state)}
+ function hasPendingDeliveryFacts(records,syncMap,operationKey,deliveryIds){const ids=new Set((deliveryIds||[]).filter(Boolean).map(String));return (records||[]).some(row=>ids.has(String(row.deliveryId||row.entityId||''))&&isPendingFact(row)&&!['accepted','duplicate'].includes(syncMap?.get(operationKey(row))?.status))}
  function shouldRetry(status,changed){return status==='pending'||(['accepted','duplicate'].includes(status)&&changed)||(['rejected','conflict'].includes(status)&&changed)}
  function findCanonicalFact(rows,canonicalId,syncMap,operationKey){return (rows||[]).find(row=>(row.eventId||row.id)===canonicalId||syncMap?.get(operationKey(row))?.canonicalId===canonicalId)||null}
+ function orderVersionedEvents(rows){return [...(rows||[])].sort((a,b)=>{const entityA=String(a?.entityId||''),entityB=String(b?.entityId||'');if(entityA!==entityB)return entityA.localeCompare(entityB);const versionA=Number(a?.payload?.expectedVersion),versionB=Number(b?.payload?.expectedVersion),validA=Number.isSafeInteger(versionA)&&versionA>0,validB=Number.isSafeInteger(versionB)&&versionB>0;if(validA&&validB&&versionA!==versionB)return versionA-versionB;return String(a?.eventId||a?.id||'').localeCompare(String(b?.eventId||b?.id||''))})}
  function compactInbox(rows,{keep=1500}={}){
   const resolved=(rows||[]).filter(row=>row.status==='reconciled').sort((a,b)=>Number(b.receivedAt||0)-Number(a.receivedAt||0));
   const remove=new Set(resolved.slice(keep).map(row=>row.id));return remove;
@@ -69,5 +71,5 @@
   return result;
  }
  function createCoordinator({locks,lockName='rotamoto-sync'}={}){let active=null;return Object.freeze({run(task){if(typeof task!=='function')return Promise.reject(new TypeError('Tarefa de sync inválida.'));if(active)return active;const execute=()=>Promise.resolve().then(task);active=locks?.request?locks.request(lockName,{mode:'exclusive'},execute):execute();return active.finally(()=>{active=null})}})}
- return Object.freeze({canonicalEvent,decide,statusFromAck,shouldRetry,isPendingFact,findCanonicalFact,compactInbox,createCoordinator,projectMotoboyDelivery,projectRestaurantDelivery});
+ return Object.freeze({canonicalEvent,decide,statusFromAck,shouldRetry,isPendingFact,hasPendingDeliveryFacts,findCanonicalFact,compactInbox,createCoordinator,orderVersionedEvents,projectMotoboyDelivery,projectRestaurantDelivery});
 });
