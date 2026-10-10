@@ -673,7 +673,7 @@ async function runDeliveryAction(id,name,{payload={},proof=null}={}){
  try{
   await commitRiderCommand(next=>{
    const race=next.races.find(item=>item.id===id);if(!race)throw new Error('A entrega não está mais disponível neste aparelho.');
-   const from=RotaMotoExecutionWorkflow.canonicalStatus(race,RotaMotoContract),action=RotaMotoExecutionWorkflow.action(from,name,race);
+   const from=RotaMotoExecutionWorkflow.canonicalStatus(race,RotaMotoContract),action=RotaMotoExecutionWorkflow.action(from,name,race),expectedVersion=Number(race.sync?.version||race.version||race.sync?.canonicalVersion||1);
    if(!action)throw new Error('Ação indisponível para o estado atual da entrega.');
    RotaMotoContract.assertTransition(from,action.to);
    race.canonicalStatus=action.to;race.status=RotaMotoExecutionWorkflow.localStatus(action.to)||race.status;
@@ -686,7 +686,7 @@ async function runDeliveryAction(id,name,{payload={},proof=null}={}){
    if(action.to==='FAILED'){race.issueAt=at;race.failureReason=String(payload.reason||'').trim()}
    if(action.to==='RETURNED'){race.returnedAt=at;race.returnReason=String(payload.reason||'').trim()}
    reviseRace(race,Date.parse(at));
-   const eventPayload=proof?{...payload,proofId:proof.id,proofSha256:proof.media?.sha256}:payload;const deliveryEvent=recordDeliveryEvent(action.eventType,race,eventPayload,next.settings);
+   const eventPayload={...payload,expectedVersion,...(proof?{proofId:proof.id,proofSha256:proof.media?.sha256}:{})};const deliveryEvent=recordDeliveryEvent(action.eventType,race,eventPayload,next.settings);
    if(next.settings.navigationOrderIds&&['DELIVERED','FAILED','RETURNED','CANCELLED'].includes(action.to))next.settings.navigationOrderIds=next.settings.navigationOrderIds.filter(raceId=>raceId!==id&&raceId!==(next.races.find(row=>row.id===id)?.deliveryId||id));
    return{deliveryEvent,deliveryProof:proof,result:true};
   });
