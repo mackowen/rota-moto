@@ -34,8 +34,14 @@ if(appSource.includes("function recordDeliveryEvent(type,r,payload={}")){
   assert(!builder.includes('packet.data.settings='),'local settings are excluded from canonical sync');
 }
 const syncTransport=appSource.slice(appSource.indexOf('async function syncWithServer'),appSource.indexOf('async function persistSyncAck'));
-assert(syncTransport.indexOf('const ack=await send')<syncTransport.indexOf('persistSyncAck(queued.packet,ack.operationResults'),
+assert(syncTransport.indexOf('const ack=await send')<syncTransport.indexOf('persistSyncAck(queued.packet,ack,'),
   'local ACK state is written only after a successful HTTP response');
+const ackPersistence=appSource.slice(appSource.indexOf('async function persistSyncAck'),appSource.indexOf('async function reconcileMotoPullPage'));
+assert(ackPersistence.indexOf('validateOperationAck')>=0&&ackPersistence.indexOf('validateOperationAck')<ackPersistence.indexOf("await tx(['syncState'"),
+  'the complete ACK is validated before any local ACK transaction starts');
+assert(syncTransport.indexOf('await persistSyncAck(queued.packet,ack,')<syncTransport.indexOf('s.delete(queueId)'),
+  'the durable packet is retired only after the complete ACK transaction commits');
+assert.match(appSource,/queued\.packet\?\.companyId!==session\.companyId/,'tenant-scoped queued packet identity is enforced');
 assert(syncTransport.includes('sync-packet:')&&syncTransport.includes("status:'pending'"),
   'packet retry is retained in IndexedDB outbox until a response is received');
 console.log('sync contract and client transport tests: OK');

@@ -42,6 +42,8 @@ assert.match(html, /<div id="earnChart"><\/div>/u,
   'daily earnings data has a full-width container separate from the bar-chart scroller');
 assert.match(app, /data-earnings-currency=/u,
   'daily earning series are charted by canonical currency without combining currencies');
+assert.match(app,/r\.isReturn\?'Sem ganho nesta devolução':r\.canonicalEarningAmountMinor!=null/u,
+  'RETURN details do not present an absent canonical Earning as a synchronization delay or create a financial value');
 assert.doesNotMatch(app, /class="earnDay"/u,
   'daily earnings no longer use compressed text rows as a chart');
 assert.doesNotMatch(styles, /\.earnDay\{/u,
