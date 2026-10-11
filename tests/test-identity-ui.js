@@ -29,6 +29,9 @@ assert.match(source, /MFA_REQUIRED/u, 'MFA errors remain visible and fail closed
 assert.match(source, /rotamoto:session-expired/u, 'sync session expiry returns the app to authentication');
 assert.match(source, /function expireSession/u, 'an HTTP 401 also clears the authenticated UI state');
 assert.match(source, /clearSession/u, 'logout clears in-memory sync credentials');
+assert.match(source, /LOCAL_MODE_KEY = 'rotaMoto\.motoboy\.local-mode\.v1'/u, 'local mode preference is scoped to the Motoboy app');
+assert.match(source, /writeLocalMode\(true\)/u, 'explicit local mode survives a reload');
+assert.match(source, /if \(session\) \{ offlineMode = false; writeLocalMode\(false\); \}[\s\S]{0,60}else offlineMode = readLocalMode\(\)/u, 'restored local preference never creates an authenticated session');
 assert.match(source, /role="dialog" aria-modal="true"/u, 'account access is exposed as a modal dialog');
 assert.match(source, /visibleControls\(\)/u, 'account dialog keeps keyboard focus within visible controls');
 assert.match(source, /placeTrigger\(\)/u, 'authenticated account access is attached to the application header');

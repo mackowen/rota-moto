@@ -56,7 +56,7 @@ html[data-resolved-theme="dark"] .top .syncStatus[data-state="offline"], html[da
 #home .home-map-heading > div { display: grid; gap: 3px; min-width: 0; }
 #home .home-map-heading strong { font-size: 13px; line-height: 1.25; }
 #home .home-map-locate { min-height: 42px; padding: 8px 12px; border: 1px solid var(--moto-line); border-radius: 11px; background: var(--moto-surface); color: var(--moto-ink); font-size: 12px; font-weight: 700; }
-#home .home-map { position: relative; height: clamp(270px, 42vh, 390px); overflow: hidden; background: var(--moto-surface-soft); }
+#home .home-map { position: relative; height: clamp(230px, 32dvh, 300px); overflow: hidden; background: var(--moto-surface-soft); }
 #home .home-map-status { position: absolute; z-index: 500; top: 10px; left: 10px; max-width: min(78%, 360px); margin: 0; padding: 7px 10px; border: 1px solid rgb(255 255 255 / 65%); border-radius: 10px; background: color-mix(in srgb,var(--moto-surface) 92%,transparent); color: var(--moto-ink); box-shadow: 0 2px 10px rgb(0 0 0 / 12%); font-size: 11px; line-height: 1.35; pointer-events: none; }
 #home .home-map-status:empty { display: none; }
 #home .home-map .leaflet-control-attribution { max-width: calc(100% - 8px); font-size: 9px; }
@@ -373,9 +373,11 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
   .top { min-height: 58px; height: 58px; gap: 7px; padding-inline: 11px; }
   .top .brand { gap: 7px; }
   .top .brandMark { width: 32px; height: 32px; border-radius: 10px; }
-  .top .brand b { font-size: 15px; }
-  .top .brand small { font-size: 10px; }
-  .top .syncStatus { max-width: 111px; min-height: 30px; padding-inline: 8px; font-size: 10px; }
+  .top .brand > span:last-child { min-width: 0; }
+  .top .brand b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+  .top .brand small { display: none; }
+  .top .syncStatus { flex: 0 1 88px; max-width: 88px; min-width: 0; min-height: 34px; padding: 5px 7px; font-size: 9px; line-height: 1.15; }
+  #rmIdentityRoot .rm-account-trigger--inline { flex: 0 1 78px; min-width: 58px; max-width: 78px; min-height: 38px; padding: 4px 7px; font-size: 10px; line-height: 1.15; text-align: center; white-space: normal; }
   #home.driver-home.active { gap: 10px; }
   #home .driver-home-intro h1 { font-size: 22px; }
   #home .driver-home-intro p { font-size: 12px; }
@@ -452,5 +454,7 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
 }
 
 @media (max-width: 600px) {
+  .availability-panel { grid-template-columns: minmax(0, 1fr); }
+  .availability-toggle { width: 100%; }
   .availability-panel.presence-panel .presence-actions > button { flex: 1 1 145px; }
 }

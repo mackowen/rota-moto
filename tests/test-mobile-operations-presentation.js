@@ -19,6 +19,12 @@ assert.match(html, /class="availability-panel presence-panel"[\s\S]*id="restaura
   'presence copy and existing check-in, check-out and QR controls remain grouped and available');
 assert.match(css, /\.availability-panel\.presence-panel\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/u,
   'presence copy and actions use separate rows so action intrinsic width cannot squeeze the status text');
+assert.match(css, /@media\s*\(max-width:\s*600px\)\s*\{\s*\.availability-panel\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/u,
+  'availability status uses the full mobile panel width before its disabled or active action');
+assert.match(app, /function refreshHomeMap\(\)[\s\S]*homeMap\.getContainer\(\)\.dataset\.userMoved/u,
+  'map interaction state is read from the Leaflet container, where the drag/zoom listeners write it');
+assert.doesNotMatch(app, /homeMap\.dataset\.userMoved/u,
+  'the Leaflet Map object is not mistaken for an HTMLElement during home rendering');
 assert.match(css, /#home \.availability-panel\.presence-panel\s*\{\s*grid-column:\s*1\s*\/\s*-1;\s*\}/u,
   'desktop presence panel spans the dashboard columns instead of being placed in a narrow secondary column');
 assert.match(css, /\.availability-panel\.presence-panel \.presence-actions\s*\{\s*width:\s*100%;\s*\}/u,
