@@ -31,6 +31,12 @@ assert.match(css, /\.availability-panel\.presence-panel \.presence-actions\s*\{\
   'presence controls use the full panel width and preserve their existing wrapping behavior');
 assert.match(html, /class="home-quick-actions"[\s\S]*id="scanDeliveryQrBtn"[\s\S]*id="newRaceBtn"[\s\S]*id="mapWorkBtn"/u,
   'QR, comanda and existing work-mode entry points remain reachable from Home with an active delivery');
+assert.match(html, /id="mapScreen"[\s\S]*class="back" data-back="routesScreen" aria-label="Voltar para Rotas"/u,
+  'the route map returns to the populated Routes screen instead of an empty delivery detail screen');
+assert.match(html, /id="earnings"[\s\S]*class="back" data-back="home"[^>]*aria-label="Voltar ao início"/u,
+  'Earnings has an explicit accessible return path to Home');
+assert.match(baseCss, /\.qrScanner \.scanFrame\{[^}]*top:50%;left:50%;right:auto;bottom:auto;width:min\(64%,280px\);height:auto;aspect-ratio:1;transform:translate\(-50%,-50%\)/u,
+  'QR reader frame is centered and square without conflicting inset and width constraints');
 assert.match(baseCss, /\.captureBadge:not\(\[hidden\]\)\s*\{\s*display:\s*flex\s*\}/u,
   'the captured-photo badge is visible only after the app removes its hidden state');
 assert.match(app, /async function submitAvailabilityCommand[\s\S]*expectedRevision[\s\S]*commandId/u,
