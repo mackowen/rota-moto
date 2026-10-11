@@ -51,6 +51,15 @@ html[data-resolved-theme="dark"] .top .syncStatus[data-state="offline"], html[da
 #home .driver-home-intro h1 { margin: 4px 0 2px; font-size: 25px; line-height: 1.12; letter-spacing: -.04em; }
 #home .driver-home-intro p { margin: 0; color: var(--moto-muted); font-size: 13px; line-height: 1.4; }
 #home .homeSyncText { display: none; }
+#home .home-map-card { min-width: 0; overflow: hidden; border: 1px solid var(--moto-line); border-radius: 18px; background: var(--moto-surface); box-shadow: var(--moto-shadow); }
+#home .home-map-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 10px 14px; }
+#home .home-map-heading > div { display: grid; gap: 3px; min-width: 0; }
+#home .home-map-heading strong { font-size: 13px; line-height: 1.25; }
+#home .home-map-locate { min-height: 42px; padding: 8px 12px; border: 1px solid var(--moto-line); border-radius: 11px; background: var(--moto-surface); color: var(--moto-ink); font-size: 12px; font-weight: 700; }
+#home .home-map { position: relative; height: clamp(270px, 42vh, 390px); overflow: hidden; background: var(--moto-surface-soft); }
+#home .home-map-status { position: absolute; z-index: 500; top: 10px; left: 10px; max-width: min(78%, 360px); margin: 0; padding: 7px 10px; border: 1px solid rgb(255 255 255 / 65%); border-radius: 10px; background: color-mix(in srgb,var(--moto-surface) 92%,transparent); color: var(--moto-ink); box-shadow: 0 2px 10px rgb(0 0 0 / 12%); font-size: 11px; line-height: 1.35; pointer-events: none; }
+#home .home-map-status:empty { display: none; }
+#home .home-map .leaflet-control-attribution { max-width: calc(100% - 8px); font-size: 9px; }
 #home .earningsSyncNote { margin: 0; padding: 9px 11px; border: 1px solid var(--moto-line); border-radius: 12px; background: var(--moto-surface); color: var(--moto-muted); font-size: 12px; line-height: 1.4; }
 #home .driver-focus, #home .driver-start, #home .driver-today, #home .driver-queue, #home .driver-last-completion { min-width: 0; border: 1px solid var(--moto-line); border-radius: 17px; background: var(--moto-surface); box-shadow: var(--moto-shadow); }
 #home .driver-focus { padding: 17px; }
@@ -333,12 +342,18 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
   .app { grid-template-columns: 88px minmax(0, 1fr); grid-template-rows: 72px minmax(0, 1fr); }
   .top { height: 72px; }
   .screen { max-width: 1040px; padding: 30px 42px 40px; }
-  #home.driver-home.active { grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); gap: 18px; }
-  #home .driver-focus { grid-column: 1; grid-row: 2 / span 2; align-self: start; display: block; padding: 22px; }
-  #home .driver-focus-actions { display: grid; grid-template-columns: 1fr; margin-top: 8px; }
-  #home .driver-queue { grid-column: 2; grid-row: 2; }
-  #home .driver-today { grid-column: 2; grid-row: 3; }
+  #home.driver-home.active { grid-template-columns: minmax(0, 1.2fr) minmax(330px, .8fr); gap: 16px 20px; }
+  #home .driver-home-intro { grid-column: 1 / -1; }
+  #home .home-map-card { grid-column: 1; grid-row: 2 / span 4; min-height: 490px; }
+  #home .home-map { height: 430px; }
+  #home .availability-panel { grid-column: 2; }
   #home .availability-panel.presence-panel { grid-column: 1 / -1; }
+  #home .home-quick-actions { grid-column: 2; }
+  #home .driver-focus, #home .driver-start { grid-column: 1; grid-row: 6; align-self: start; display: block; padding: 22px; }
+  #home .driver-focus-actions { display: grid; grid-template-columns: 1fr; margin-top: 8px; }
+  #home .driver-today { grid-column: 2; grid-row: 6; }
+  #home .driver-queue { grid-column: 1 / -1; }
+  #home .earningsSyncNote, #home .driver-last-completion, #home .journeySummary { grid-column: 1 / -1; }
   #home .driver-last-completion, #home .driver-map-entry { grid-column: 1 / -1; }
   #raceList { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 }
@@ -418,9 +433,14 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
 .quick-action:focus-visible, .availability-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 @media (min-width: 700px) and (max-width: 1099px) {
   .driver-home { max-width: 980px; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); align-items: start; }
-  .driver-home-intro, .availability-panel, .home-quick-actions, #earningsSyncNote, #homeDeliveryFocus, #homeNoActive, .driver-queue, .driver-last-completion, .journeySummary { grid-column: 1 / -1; }
-  #home .driver-today { grid-column: 1; }
-  #home .driver-queue { grid-row: span 2; }
+  #home .driver-home-intro { grid-column: 1 / -1; }
+  #home .home-map-card { grid-column: 1; grid-row: 2 / span 4; }
+  #home .availability-panel, #home .home-quick-actions, #earningsSyncNote { grid-column: 2; }
+  #home .availability-panel.presence-panel { grid-column: 1 / -1; }
+  #home .home-map { height: 360px; }
+  #homeDeliveryFocus, #homeNoActive { grid-column: 1; }
+  #home .driver-today, #home .driver-queue { grid-column: 1 / -1; }
+  #home .driver-last-completion, #home .journeySummary { grid-column: 1 / -1; }
 }
 @media (max-width: 380px) {
   .home-quick-actions { grid-template-columns: 1fr; }
