@@ -442,3 +442,5 @@ nav{box-shadow:0 -6px 24px rgba(16,24,40,.07);padding-bottom:env(safe-area-inset
 
 .helpIndex{border:1px solid var(--border);border-radius:10px;padding:9px 12px}.helpIndex summary{font-weight:750;cursor:pointer}.helpIndex nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.helpIndex a{color:var(--accent);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
 @media(max-width:500px){.helpIndex nav{grid-template-columns:minmax(0,1fr)}}
+
+.rm-map-runtime-status{position:static;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;max-width:100%;margin:8px 0 0;padding:9px 11px;border:1px solid var(--border);border-radius:11px;background:var(--surface);color:var(--text);box-shadow:var(--shadow);font-size:12px;line-height:1.35}.rm-map-runtime-status[hidden]{display:none}.rm-map-runtime-status span{min-width:0}.rm-map-runtime-status button{flex:0 0 auto;min-height:36px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font:inherit;font-weight:700}
