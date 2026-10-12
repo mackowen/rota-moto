@@ -32,7 +32,7 @@
   box-shadow: none;
 }
 .brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; color: inherit; text-decoration: none; }
-.brandMark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 12px; background: var(--moto-green); color: #fff; font-size: 19px; font-weight: 850; }
+.brandMark { display: block; flex: 0 0 auto; width: 36px; height: 36px; border-radius: 12px; object-fit: contain; }
 .brand b, .brand small { display: block; }
 .brand b { font-size: 16px; letter-spacing: -.035em; line-height: 1.15; }
 .brand small { margin-top: 2px; color: var(--moto-muted); font-size: 11px; }

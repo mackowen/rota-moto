@@ -16,7 +16,7 @@ assert.match(pilot, /\.bottom-navigation\[aria-label="Navegação principal"\]\s
   'navigation buttons keep uniform non-shrinking widths');
 assert.doesNotMatch(css, /html\[data-(?:resolved-theme|theme)="(?:dark|auto)"\]\s+nav\s*,/u,
   'theme rules no longer style the nested Help topic index as the app navigation');
-assert.match(css, /\.helpIndex nav\{position:static;display:grid;[^}]*overflow:visible/u,
+assert.match(css, /\.helpIndex\[open\]>nav\{position:static;display:grid;[^}]*overflow:visible/u,
   'the Help topic index stays in document flow and is not clipped');
 assert.match(css, /#helpTopics\s*>\s*\.helpIndex\s*\{grid-column:1\/-1/u,
   'the topic index spans the Help content width');

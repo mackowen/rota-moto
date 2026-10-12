@@ -440,7 +440,7 @@ button:disabled{cursor:not-allowed;opacity:.55;transform:none!important}
 @media(max-width:430px){.helpButton{min-width:56px;min-height:42px}.helpTopic{padding:12px}.helpTopic p{font-size:13px}}
 #helpEmpty[hidden]{display:none}
 
-#helpTopics>.helpIndex{grid-column:1/-1;min-width:0;border:1px solid var(--border);border-radius:10px;padding:9px 12px;background:var(--card)}.helpIndex summary{min-height:42px;display:flex;align-items:center;font-weight:750;cursor:pointer}.helpIndex nav{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;min-width:0;max-width:100%;overflow:visible}.helpIndex a{display:block;min-width:0;padding:6px 4px;color:var(--accent);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+#helpTopics>.helpIndex{grid-column:1/-1;min-width:0;border:1px solid var(--border);border-radius:10px;padding:9px 12px;background:var(--card)}.helpIndex summary{min-height:42px;display:flex;align-items:center;gap:10px;font-weight:750;cursor:pointer;list-style:none}.helpIndex summary::-webkit-details-marker{display:none}.helpIndex summary::after{content:"▸";flex:0 0 auto;margin-inline-start:auto;color:var(--muted);font-size:16px;line-height:1}.helpIndex[open]>summary::after{content:"▾"}.helpIndex:not([open])>nav{display:none}.helpIndex[open]>nav{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;min-width:0;max-width:100%;overflow:visible}.helpIndex a{display:block;min-width:0;padding:6px 4px;color:var(--accent);font-size:12px;line-height:1.4;overflow-wrap:anywhere}
 @media(max-width:500px){.helpIndex nav{grid-template-columns:minmax(0,1fr)}}
 
 
