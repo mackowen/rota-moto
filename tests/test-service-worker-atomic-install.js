@@ -39,7 +39,7 @@ async function run(listener, event = {}) {
   const healthy = await setup('/vendor/maplibre/maplibre-gl-worker.js');
   await run(healthy.listeners.get('install'));
   const [cacheName] = [...healthy.stores.keys()];
-  assert.match(cacheName, /v43\.36$/u);
+  assert.match(cacheName, /v43\.38$/u);
   assert.equal([...healthy.stores.get(cacheName).keys()].some(url => url.includes('maplibre-gl-worker.js')), false,
     'optional worker outage does not prevent an offline shell update');
 
@@ -57,9 +57,9 @@ async function run(listener, event = {}) {
   const unlisted = { request: new Request(`${healthy.origin}/styles.css?v=43.999`), respondWith() { intercepted = true; } };
   await run(healthy.listeners.get('fetch'), unlisted);
   assert.equal(intercepted, false, 'unlisted versions bypass the shell cache');
-  const exact = { request: new Request(`${healthy.origin}/styles.css?v=43.14`), response: null, respondWith(promise) { exact.response = promise; } };
+  const exact = { request: new Request(`${healthy.origin}/styles.css?v=43.15`), response: null, respondWith(promise) { exact.response = promise; } };
   await run(healthy.listeners.get('fetch'), exact);
-  assert.equal(await (await exact.response).text(), 'asset:/styles.css?v=43.14');
+  assert.equal(await (await exact.response).text(), 'asset:/styles.css?v=43.15');
   const api = { request: new Request(`${healthy.origin}/api/sync/push`), respondWith() { throw new Error('API must bypass shell cache'); } };
   await run(healthy.listeners.get('fetch'), api);
   console.log('Motoboy service worker atomic installation and exact URL matching: PASS');

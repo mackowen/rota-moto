@@ -191,7 +191,7 @@ button svg:not(.brandIcon){color:currentColor!important}
 .routeOrderCard .routeItem:last-child{margin-bottom:0}
 
 /* O controle de visão geral fica longe dos controles nativos do Leaflet. */
-.routePreviewCard .mapStage .mapOverview{top:auto;left:auto;right:12px;bottom:12px}
+.routePreviewCard .mapStage .mapOverview{top:12px;left:auto;right:12px;bottom:auto}
 .mapWrap .mapOverviewWork{top:auto;right:12px;bottom:12px;left:auto}
 .mapWrap #fullscreenMap{top:12px;right:12px;left:auto}
 
@@ -276,7 +276,7 @@ button svg:not(.brandIcon),button svg:not(.brandIcon) path,button svg:not(.brand
 .tier button:hover,.tier button:focus-visible{background:color-mix(in srgb,var(--dangerText) 16%,var(--dangerBg));outline:2px solid color-mix(in srgb,var(--dangerText) 35%,transparent);outline-offset:1px}
 
 /* Visão geral do Modo Trabalho: mesma posição no mapa normal e em tela cheia. */
-.mapWrap .mapOverviewWork{top:12px!important;left:12px!important;right:auto!important;bottom:auto!important;z-index:600!important}
+.mapWrap .mapOverviewWork{top:max(12px,env(safe-area-inset-top));right:12px;left:auto;bottom:auto;z-index:1002}
 
 /* Ditado de endereço. */
 
