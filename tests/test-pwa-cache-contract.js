@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');const fs=require('node:fs');
 const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');const index=fs.readFileSync(require.resolve('../index.html'),'utf8');const runtime=fs.readFileSync(require.resolve('../map-runtime.js'),'utf8');const manifest=JSON.parse(fs.readFileSync(require.resolve('../manifest.json'),'utf8'));
-assert(worker.includes('v43.34'));
+assert(worker.includes('v43.35'));
 assert(index.includes('rel="icon" type="image/svg+xml" href="favicon.svg?v=0140.1"')&&worker.includes('./favicon.svg'),'shared brand symbol is available offline without replacing PWA raster icons');
 assert.deepEqual(manifest.icons.map(icon=>icon.src),['icons/icon-192.png','icons/icon-512.png'],'existing PWA install icons stay unchanged');
 assert(index.includes('pilot-views.css?v=0140.5')&&worker.includes('./pilot-views.css?v=0140.5'));
@@ -11,9 +11,9 @@ assert(worker.includes('OPTIONAL_ASSETS')&&worker.includes('await Promise.all(AS
 assert(!worker.slice(worker.indexOf('const OPTIONAL_ASSETS'),worker.indexOf('const assetURLs')).includes('rotamoto-map-runtime.js'),'map runtime with raster fallback and diagnostics is required in the offline shell');
 assert(!worker.includes('skipWaiting')&&worker.includes('await caches.delete(CACHE)'),'new shell waits for the old controlled clients to close; failed staging is removed');
 assert(worker.includes('status: 503'));
-assert(index.includes('styles.css?v=43.12')&&worker.includes('./styles.css?v=43.12'));
-assert(index.includes('rotamoto-map-runtime.js?v=0140.3')&&worker.includes('rotamoto-map-runtime.js?v=0140.3'));
+assert(index.includes('styles.css?v=43.13')&&worker.includes('./styles.css?v=43.13'));
+assert(index.includes('rotamoto-map-runtime.js?v=0140.4')&&worker.includes('rotamoto-map-runtime.js?v=0140.4'));
 assert(index.includes('identity-ui.css')&&index.includes('design-system.css?v=0110.3'));
 for(const asset of ['ocr/normalization.js','ocr/semantic-parser.js','ocr/image-preprocessor.js','ocr/pipeline.js','vendor/tesseract/tesseract.min.js'])assert(worker.includes(`./${asset}`),`offline shell includes ${asset}`);
-assert(runtime.includes('alidade_smooth_dark')&&runtime.includes('OpenStreetMap')&&runtime.includes('Stadia Maps'));
+assert(runtime.includes('tile.openstreetmap.org')&&runtime.includes('OpenStreetMap')&&runtime.includes('webgl-context-lost')&&runtime.includes('raster-tiles-unavailable'));
 console.log('Motoboy atomic PWA shell contract: PASS');
