@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const gps=require('../location-quality.js');
+const captured=Date.parse('2026-10-12T12:00:00.000Z');
+assert.deepEqual(gps.accept(-23.5,-46.6,14,captured,captured-1),{lat:-23.5,lng:-46.6,accuracy:14,timestamp:captured,at:new Date(captured).toISOString()});
+assert.equal(gps.accept(-23.5,-46.6,14,captured-1,captured),null,'older asynchronous GPS fix is ignored');
+assert.equal(gps.accept(91,-46.6,14,captured),null,'latitude outside geographic range is rejected');
+assert.equal(gps.accept(-23.5,-181,14,captured),null,'longitude outside geographic range is rejected');
+assert.equal(gps.accept(-23.5,-46.6,14,0),null,'missing device timestamp is not presented as a fresh reading');
+assert.equal(gps.accuracyText(14),'Precisão boa: margem informada de cerca de 14 m');
+assert.equal(gps.accuracyText(65),'Precisão moderada: margem informada de cerca de 65 m');
+assert.equal(gps.accuracyText(250),'Precisão baixa: margem informada de cerca de 250 m');
+assert.equal(gps.accuracyText(null),'Precisão não informada');
+assert.equal(gps.ageText(captured,captured+30_000),'leitura recente');
+assert.equal(gps.ageText(captured,captured+180_000),'leitura de 3 min atrás');
+console.log('GPS quality/freshness: PASS');

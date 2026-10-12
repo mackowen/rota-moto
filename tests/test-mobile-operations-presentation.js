@@ -10,6 +10,8 @@ const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'pilot-views.css'), 'utf8');
 const baseCss = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const workflow = fs.readFileSync(path.join(root, 'execution-workflow.js'), 'utf8');
+const gpsQuality = fs.readFileSync(path.join(root, 'location-quality.js'), 'utf8');
+const serviceWorker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
 
 assert.match(html, /id="syncStatus"[^>]+role="status" aria-live="polite"/u,
   'connection state remains announced to assistive technology');
@@ -121,5 +123,28 @@ assert.match(css, /data-resolved-theme="dark"[^\n]*button\.active[^\n]*color: #0
   'selected green controls use dark foreground text in dark theme for readable contrast');
 assert.doesNotMatch(css, /!important/u,
   'the pilot presentation does not add important overrides');
+
+assert.match(html, /location-quality\.js\?v=0140\.8/u, 'GPS quality metadata is loaded before the application');
+assert.match(serviceWorker, /location-quality\.js\?v=0140\.8/u, 'GPS quality helper is included in the offline shell');
+assert.match(gpsQuality, /capturedAt < Number\(previousTimestamp \|\| 0\)/u, 'a late GPS response cannot replace a newer device reading');
+assert.match(app, /RotaMotoGpsQuality\.accept\(lat,lng,accuracy,timestamp,lastGps\?\.timestamp\)/u, 'GPS coordinates use the device capture timestamp and reject stale callbacks');
+assert.match(app, /maximumAge:0,timeout:15000/u, 'one-shot GPS requests require a fresh reading');
+assert.match(app, /maximumAge:0,timeout:20000/u, 'continuous GPS tracking requests fresh readings with a bounded timeout');
+assert.match(app, /function updateGpsAccuracyCircle\(/u, 'reported GPS accuracy is shown as a geographic uncertainty circle');
+assert.match(app, /scheduleRoutePreviewLayout\(\)[\s\S]*requestAnimationFrame\([\s\S]*requestAnimationFrame\([\s\S]*invalidateSize\(\{pan:false\}\)/u,
+  'the Rotas map waits for stable visible dimensions before Leaflet calculates its tile viewport');
+assert.match(app, /function initRoutePreviewMap\(\)[\s\S]*setView\(center,known\?12:4\)/u,
+  'the map uses a known device or delivery point, otherwise a labeled regional overview');
+assert.match(app, /function initRoutePreviewMap\(\)[\s\S]*row\.lat!=null&&row\.lng!=null&&Number\.isFinite/u,
+  'missing coordinates cannot be coerced to a fabricated 0,0 map center');
+assert.doesNotMatch(app.match(/function fitRoutePreviewOverview\(\)[\s\S]*?\n\}/u)?.[0]||'', /-23\.5505|-46\.6333/u,
+  'Visão geral does not invent a São Paulo device position when there are no known points');
+const routePreview = app.match(/function renderRoutePreview\(rs\)[\s\S]*?\n\}/u)?.[0] || '';
+assert.match(routePreview, /const deliveryBounds=\[\]/u, 'automatic route framing uses a separate collection of real delivery points');
+assert.match(routePreview, /deliveryBounds\.push\(point\)/u, 'real delivery coordinates remain eligible for automatic framing');
+assert.doesNotMatch(routePreview, /deliveryBounds\.push\(\[lastGps\.lat,lastGps\.lng\]\)/u, 'a GPS-only fix cannot force a late zoom that temporarily blanks the cartography');
+const canonicalGeometry = app.split('\n').find(line => line.startsWith('async function loadCanonicalRoadGeometry(rows)')) || '';
+assert.doesNotMatch(canonicalGeometry, /if\(lastGps\)bounds\.push/u, 'late road geometry cannot reframe a route map around the device alone');
+assert.match(app, /function fitRoutePreviewOverview\(\)[\s\S]*?if\(lastGps\)points\.push/u, 'the explicit Overview action can still include the actual current device position');
 
 console.log('Mobile operational hierarchy and regression guards: OK');
