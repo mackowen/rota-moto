@@ -33,6 +33,10 @@ assert.match(html, /class="home-quick-actions"[\s\S]*id="scanDeliveryQrBtn"[\s\S
   'QR, comanda and existing work-mode entry points remain reachable from Home with an active delivery');
 assert.match(html, /id="mapScreen"[\s\S]*class="back" data-back="routesScreen" aria-label="Voltar para Rotas"/u,
   'the route map returns to the populated Routes screen instead of an empty delivery detail screen');
+assert.match(app, /function setRouteMapFullscreen\(expanded\)[\s\S]*aria-expanded[\s\S]*invalidateSize\(\{pan:false\}\)/u,
+  'map expansion exposes its exit state and invalidates the renderer after resizing');
+assert.match(app, /event\.key==='Escape'&&routeFullscreen/u,
+  'Escape exits the expanded map without changing route state');
 assert.match(html, /id="earnings"[\s\S]*class="back" data-back="home"[^>]*aria-label="Voltar ao início"/u,
   'Earnings has an explicit accessible return path to Home');
 assert.match(baseCss, /\.qrScanner \.scanFrame\{[^}]*top:50%;left:50%;right:auto;bottom:auto;width:min\(64%,280px\);height:auto;aspect-ratio:1;transform:translate\(-50%,-50%\)/u,
@@ -97,10 +101,16 @@ assert.match(app, /id="nextPreferredMap"[\s\S]*mapProviderOptions[\s\S]*Google M
   'map keeps the configured external navigation action and all provider choices');
 assert.match(app, /map\?\.invalidateSize\(\{pan:false\}\);fitWorkMapOverview\(\)/u,
   'the route map refits real markers after its container dimensions settle');
+assert.match(css, /#mapScreen \.mapWrap\.fullscreen\s*\{\s*position:\s*fixed;\s*inset:\s*0;\s*z-index:\s*5000;\s*width:\s*auto;\s*height:\s*auto;\s*min-height:\s*0;\s*margin:\s*0/u,
+  'fullscreen map overrides the more specific normal map frame and occupies the viewport');
+assert.match(css, /#mapScreen \.mapWrap\.fullscreen #map\s*\{\s*height:\s*100%;\s*\}/u,
+  'Leaflet canvas follows the expanded map height');
 assert.match(baseCss, /\.mapWrap #map\{height:100%;min-height:0\}/u,
   'the Leaflet canvas fills its visual surface instead of extending below the clipped map frame');
 assert.match(baseCss, /filterTabs button:not\(\.active\)[^}]*background:var\(--card\)/u,
   'dark surface rules do not replace the active filter treatment');
+assert.match(css, /html\[data-resolved-theme="dark"\] \.filterTabs button\.active[^}]*color: #082713/u,
+  'active Entregas filters retain a dark foreground on the bright green selected surface');
 assert.match(css, /env\(safe-area-inset-bottom\)/u,
   'mobile content and navigation continue to account for the device safe area');
 assert.match(css, /button:focus-visible,[\s\S]*outline: 3px/u,

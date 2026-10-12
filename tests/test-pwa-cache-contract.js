@@ -1,7 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict');const fs=require('node:fs');
 const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');const index=fs.readFileSync(require.resolve('../index.html'),'utf8');const runtime=fs.readFileSync(require.resolve('../map-runtime.js'),'utf8');
-assert(worker.includes('v43.27'));
+assert(worker.includes('v43.29'));
+assert(index.includes('pilot-views.css?v=0140.2')&&worker.includes('./pilot-views.css?v=0140.2'));
 assert(worker.includes('url.origin !== self.location.origin')&&worker.includes('/^\\/api'));
 assert(worker.includes('assetURLs.has(url.href)'),'only exact full manifest URLs are eligible');
 assert(worker.includes('OPTIONAL_ASSETS')&&worker.includes('await Promise.all(ASSETS.map'),'shell assets stage before activation');
