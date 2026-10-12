@@ -1,15 +1,15 @@
 'use strict';
 const assert=require('node:assert/strict');const fs=require('node:fs');
 const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');const index=fs.readFileSync(require.resolve('../index.html'),'utf8');const runtime=fs.readFileSync(require.resolve('../map-runtime.js'),'utf8');
-assert(worker.includes('v43.29'));
-assert(index.includes('pilot-views.css?v=0140.2')&&worker.includes('./pilot-views.css?v=0140.2'));
+assert(worker.includes('v43.30'));
+assert(index.includes('pilot-views.css?v=0140.3')&&worker.includes('./pilot-views.css?v=0140.3'));
 assert(worker.includes('url.origin !== self.location.origin')&&worker.includes('/^\\/api'));
 assert(worker.includes('assetURLs.has(url.href)'),'only exact full manifest URLs are eligible');
 assert(worker.includes('OPTIONAL_ASSETS')&&worker.includes('await Promise.all(ASSETS.map'),'shell assets stage before activation');
 assert(!worker.slice(worker.indexOf('const OPTIONAL_ASSETS'),worker.indexOf('const assetURLs')).includes('rotamoto-map-runtime.js'),'map runtime with raster fallback and diagnostics is required in the offline shell');
 assert(!worker.includes('skipWaiting')&&worker.includes('await caches.delete(CACHE)'),'new shell waits for the old controlled clients to close; failed staging is removed');
 assert(worker.includes('status: 503'));
-assert(index.includes('styles.css?v=43.11')&&worker.includes('./styles.css?v=43.11'));
+assert(index.includes('styles.css?v=43.12')&&worker.includes('./styles.css?v=43.12'));
 assert(index.includes('rotamoto-map-runtime.js?v=0140.3')&&worker.includes('rotamoto-map-runtime.js?v=0140.3'));
 assert(index.includes('identity-ui.css')&&index.includes('design-system.css?v=0110.3'));
 for(const asset of ['ocr/normalization.js','ocr/semantic-parser.js','ocr/image-preprocessor.js','ocr/pipeline.js','vendor/tesseract/tesseract.min.js'])assert(worker.includes(`./${asset}`),`offline shell includes ${asset}`);
