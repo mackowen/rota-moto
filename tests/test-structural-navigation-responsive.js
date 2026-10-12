@@ -30,7 +30,7 @@ assert.match(app, /activeNav&&primaryNav[\s\S]*primaryNav\.scrollLeft=right-prim
   'the current destination scrolls into view automatically');
 assert.match(pilot, /@media \(min-width: 761px\) and \(min-height: 520px\)/u,
   'short landscape viewports retain the mobile shell instead of a compressed desktop grid');
-assert.match(pilot, /#home \.home-map \{ height: clamp\(260px, 52dvh, 430px\); \}/u,
+assert.match(pilot, /#home \.home-map \{ height: clamp\(300px, 50dvh, 460px\); \}/u,
   'desktop map height responds to available viewport height');
 assert.match(app, /window\.addEventListener\('orientationchange',invalidateVisibleMaps\)/u,
   'map dimensions are recalculated after device rotation');

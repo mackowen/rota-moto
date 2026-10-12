@@ -17,7 +17,7 @@ assert.match(app, /if\(!navigator\.mediaDevices\?\.getUserMedia\)throw Error\('g
 assert.match(identity, /if \(inviteForm\) inviteForm\.hidden/u, 'optional admin invitation control is guarded');
 assert.match(identity, /if \(membersList\) membersList\.hidden/u, 'optional admin membership control is guarded');
 assert.match(identity, /if \(adminPanel\) adminPanel\.hidden/u, 'removed admin panel is not dereferenced');
-assert.match(pilotViews, /@media \(min-width: 761px\) and \(min-height: 520px\)[\s\S]*?\.app \{ display: grid; grid-template-columns: 76px minmax\(0, 1fr\); grid-template-rows: 68px minmax\(0, 1fr\); min-height: 100dvh/u, 'tablet and desktop use a reserved application shell');
+assert.match(pilotViews, /@media \(min-width: 761px\) and \(min-height: 520px\)[\s\S]*?\.app \{ display: grid; grid-template-columns: 88px minmax\(0, 1fr\); grid-template-rows: 64px minmax\(0, 1fr\); min-height: 100dvh/u, 'tablet and desktop use a compact reserved application shell');
 assert.match(pilotViews, /\.app main \{ grid-column: 2; grid-row: 2; min-height: 0; overflow-y: auto/u, 'desktop content scrolls in its own layout column');
 assert.match(styles, /@media\(max-width:760px\)[\s\S]{0,200}\.app\{padding-top:[^}]*padding-bottom:calc\(72px \+ env\(safe-area-inset-bottom\)\)/u, 'mobile fixed navigation retains safe-area content clearance');
 console.log('Motoboy bootstrap, identity and navigation regressions: OK');

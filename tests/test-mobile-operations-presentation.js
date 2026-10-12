@@ -25,8 +25,10 @@ assert.match(app, /function refreshHomeMap\(\)[\s\S]*homeMap\.getContainer\(\)\.
   'map interaction state is read from the Leaflet container, where the drag/zoom listeners write it');
 assert.doesNotMatch(app, /homeMap\.dataset\.userMoved/u,
   'the Leaflet Map object is not mistaken for an HTMLElement during home rendering');
-assert.match(css, /#home \.availability-panel\.presence-panel\s*\{\s*grid-column:\s*1\s*\/\s*-1;\s*\}/u,
-  'desktop presence panel spans the dashboard columns instead of being placed in a narrow secondary column');
+assert.match(css, /grid-template-areas:\s*"intro intro"\s*"map availability"\s*"map presence"/u,
+  'desktop map and operational cards occupy explicit non-overlapping dashboard areas');
+assert.match(css, /#home \.availability-panel\.presence-panel\s*\{\s*grid-area:\s*presence;/u,
+  'desktop presence card occupies its own grid area beside the map');
 assert.match(css, /\.availability-panel\.presence-panel \.presence-actions\s*\{\s*width:\s*100%;\s*\}/u,
   'presence controls use the full panel width and preserve their existing wrapping behavior');
 assert.match(html, /class="home-quick-actions"[\s\S]*id="scanDeliveryQrBtn"[\s\S]*id="newRaceBtn"[\s\S]*id="mapWorkBtn"/u,
