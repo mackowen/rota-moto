@@ -19,7 +19,7 @@ assert.match(app, /visualViewport\?\.addEventListener\('resize',invalidateVisibl
 assert.match(app, /responsiveMapObserver\?\.observe\(container\)/u);
 assert.match(html, /favicon\.svg\?v=0140\.1/u);
 assert.match(html, /pilot-views\.css\?v=0140\.5/u);
-assert.match(worker, /CACHE_PREFIX\}v43\.35/u);
+assert.match(worker, /CACHE_PREFIX\}v43\.36/u);
 assert.match(worker, /\.\/favicon\.svg\?v=0140\.1/u);
 assert.match(worker, /\.\/pilot-views\.css\?v=0140\.5/u);
 assert.match(icon, /viewBox="0 0 64 64"/u);
