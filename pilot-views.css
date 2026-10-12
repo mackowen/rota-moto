@@ -123,17 +123,14 @@ html[data-resolved-theme="dark"] .top .syncStatus[data-state="offline"], html[da
 #home .driver-last-completion > div:first-child b { margin-top: 3px; font-size: 12px; }
 #home .driver-last-completion > div:first-child small { margin-top: 2px; color: var(--moto-muted); font-size: 10px; }
 #home .driver-map-entry { display: inline-flex; align-items: center; justify-self: start; gap: 8px; min-height: 42px; padding: 4px; border: 0; background: transparent; color: var(--moto-green-dark); font-size: 12px; font-weight: 700; }
-#home button:focus-visible, #home a:focus-visible, .bottom-navigation button:focus-visible, .helpIndex a:focus-visible, .moreNavMenu button:focus-visible { outline: 3px solid color-mix(in srgb, var(--moto-green) 45%, transparent); outline-offset: 2px; }
+#home button:focus-visible, #home a:focus-visible, .bottom-navigation button:focus-visible, .helpIndex a:focus-visible { outline: 3px solid color-mix(in srgb, var(--moto-green) 45%, transparent); outline-offset: 2px; }
 button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--moto-green) 52%, transparent); outline-offset: 2px; }
 
 .bottom-navigation[aria-label="Navegação principal"] { position: fixed; z-index: 2100; right: 0; bottom: 0; left: 0; transform: none; display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 4px; width: 100%; height: calc(68px + env(safe-area-inset-bottom)); margin: 0; padding: 5px max(8px,env(safe-area-inset-left)) calc(5px + env(safe-area-inset-bottom)); overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x; -webkit-overflow-scrolling: touch; scrollbar-width: none; border: 0; border-top: 1px solid var(--moto-line); border-radius: 0; background: var(--moto-surface); box-shadow: 0 -5px 18px rgb(14 31 20 / 5%); }
-.bottom-navigation[aria-label="Navegação principal"] button { flex: 0 0 78px; min-width: 78px; max-width: 78px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 48px; padding: 4px 3px; border: 0; border-radius: 12px; background: transparent; color: var(--moto-muted); font-size: 10px; font-weight: 650; line-height: 1.1; }
+.bottom-navigation[aria-label="Navegação principal"] button { flex: 1 0 78px; min-width: 78px; max-width: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 48px; padding: 4px 3px; border: 0; border-radius: 12px; background: transparent; color: var(--moto-muted); font-size: 10px; font-weight: 650; line-height: 1.1; }
 .bottom-navigation[aria-label="Navegação principal"] button svg { width: 19px; height: 19px; }
 .bottom-navigation[aria-label="Navegação principal"] button.active { color: var(--moto-green-dark); background: var(--moto-green-soft); }
-.moreNavMenu { position: fixed; z-index: 2300; right: 12px; bottom: calc(72px + env(safe-area-inset-bottom)); display: grid; width: min(220px, calc(100vw - 24px)); gap: 3px; padding: 7px; border: 1px solid var(--moto-line); border-radius: 15px; background: var(--moto-surface); box-shadow: 0 14px 40px rgb(0 0 0 / 18%); }
-.moreNavMenu[hidden] { display: none; }
-.moreNavMenu button { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 9px 11px; border: 0; border-radius: 10px; background: transparent; color: var(--moto-ink); text-align: left; font-size: 13px; font-weight: 650; }
-.moreNavMenu button svg { width: 18px; height: 18px; color: var(--moto-green-dark); }
+
 
 #races .pageHead, #earnings .pageHead, #deliveryScreen .pageHead, #mapScreen .pageHead, #completionScreen .pageHead { display: flex; align-items: center; gap: 11px; margin-bottom: 15px; }
 .pageHead h1 { margin: 0; font-size: 24px; letter-spacing: -.04em; line-height: 1.15; }
@@ -316,7 +313,6 @@ html[data-resolved-theme="dark"] .completionScreen[data-confirmed="false"] .comp
   .bottom-navigation[aria-label="Navegação principal"] { position: sticky; grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: stretch; width: auto; min-width: 0; height: auto; max-height: calc(100dvh - 64px); margin: 0; padding: 12px 7px; overflow-x: hidden; overflow-y: auto; border: 0; border-right: 1px solid var(--moto-line); background: var(--moto-surface); box-shadow: none; }
   .bottom-navigation[aria-label="Navegação principal"] button { flex: 0 0 auto; width: 100%; min-width: 0; max-width: 100%; min-height: 60px; gap: 5px; padding: 7px 2px; font-size: 10px; overflow-wrap: anywhere; }
   .bottom-navigation[aria-label="Navegação principal"] button svg { flex: 0 0 19px; }
-  .moreNavMenu { right: auto; bottom: 12px; left: 96px; }
   #home.driver-home.active { grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); grid-template-areas: "intro intro" "map availability" "map presence" "focus today" "quick quick" "queue queue" "completion completion" "note note" "journey journey"; gap: 14px 16px; }
   #home .driver-home-intro { grid-area: intro; }
   #home .home-map-card { grid-area: map; min-width: 0; min-height: 0; align-self: start; }

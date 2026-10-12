@@ -18,10 +18,10 @@ assert.match(app, /new ResizeObserver\(entries/u);
 assert.match(app, /visualViewport\?\.addEventListener\('resize',invalidateVisibleMaps\)/u);
 assert.match(app, /responsiveMapObserver\?\.observe\(container\)/u);
 assert.match(html, /favicon\.svg\?v=0140\.1/u);
-assert.match(html, /pilot-views\.css\?v=0140\.4/u);
-assert.match(worker, /CACHE_PREFIX\}v43\.32/u);
+assert.match(html, /pilot-views\.css\?v=0140\.5/u);
+assert.match(worker, /CACHE_PREFIX\}v43\.34/u);
 assert.match(worker, /\.\/favicon\.svg\?v=0140\.1/u);
-assert.match(worker, /\.\/pilot-views\.css\?v=0140\.4/u);
+assert.match(worker, /\.\/pilot-views\.css\?v=0140\.5/u);
 assert.match(icon, /viewBox="0 0 64 64"/u);
 assert.match(icon, /M32 11c-7\.7 0-14 6\.3-14 14/u);
 
