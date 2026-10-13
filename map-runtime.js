@@ -34,10 +34,12 @@ function statusFor(map, create = false) {
   if (status && (status.isConnected !== false || !create)) return status;
   const anchor = anchorFor(map);
   status = document.createElement('div');
-  status.className = 'rm-map-runtime-status';
+  status.className = anchor.classList?.contains('mapStage')
+    ? 'rm-map-runtime-status rm-map-runtime-status-overlay' : 'rm-map-runtime-status';
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
-  anchor.insertAdjacentElement('afterend', status);
+  if (status.classList.contains('rm-map-runtime-status-overlay')) anchor.append(status);
+  else anchor.insertAdjacentElement('afterend', status);
   statusElements.set(map, status);
   return status;
 }
