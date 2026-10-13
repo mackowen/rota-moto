@@ -98,7 +98,7 @@
    client:isReturn?(destination.name||'Restaurante responsável'):(order.customer?.name||order.customer||current.client||''),
    lat:isReturn?(destination.latitude??null):(Number.isFinite(Number(lat))?Number(lat):null),
    lng:isReturn?(destination.longitude??null):(Number.isFinite(Number(lng))?Number(lng):null),
-   orderNo:order.num||order.orderNo||current.orderNo||'',value:order.value??order.deliveryFee??current.value??0,
+   orderNo:order.num||order.orderNo||order.number||current.orderNo||'',value:order.value??order.deliveryFee??current.value??0,
    deliveryFee:order.deliveryFee??order.value??current.deliveryFee??null,notes:order.obs||order.notes||current.notes||'',
    items:Array.isArray(order.items)?order.items:current.items||[],deleted:!!(tombstone||remote.deletedAt||remote.deleted),
    sync:{...(current.sync||{}),state:pendingExecution?'conflict':'synced',canonicalId:remote.id,canonicalVersion:Number(remote.version||1)}};
