@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const app=fs.readFileSync(require.resolve('../app.js'),'utf8');
+const html=fs.readFileSync(require.resolve('../index.html'),'utf8');
+const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');
+const setPosition=app.slice(app.indexOf('function setDriverPosition('),app.indexOf('function mapScreenActive()'));
+const updateMarker=app.slice(app.indexOf('function updateHomeGpsMarker()'),app.indexOf('function refreshHomeMap()'));
+const show=app.slice(app.indexOf('function show(id)'),app.indexOf("document.addEventListener('click'"));
+assert.ok(show.includes("else if(id==='home')startTracking()"),'Home must start GPS tracking while visible');
+assert.match(setPosition,/if\(homeMap\)\{homeGpsAccuracyCircle=updateGpsAccuracyCircle\(homeMap,homeGpsAccuracyCircle,lastGps\);updateHomeGpsMarker\(\)\}/u,'GPS fixes update the Home marker without recreating the map');
+assert.match(updateMarker,/homeDriverMarker\.setLatLng\(position\)/u,'existing marker follows later GPS readings');
+assert.doesNotMatch(updateMarker,/homeMap\.remove\(/u,'marker update cannot destroy the map');
+assert.match(app,/homeDriverMarker=null/u,'invalid or unavailable location removes only its marker');
+assert.match(html,/app\.js\?v=0140\.10/u);
+assert.match(worker,/v43\.44/u);
+assert.match(worker,/app\.js\?v=0140\.10/u);
+console.log('Home GPS marker lifecycle contract: PASS');

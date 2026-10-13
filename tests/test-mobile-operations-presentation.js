@@ -10,13 +10,43 @@ const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'pilot-views.css'), 'utf8');
 const baseCss = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const workflow = fs.readFileSync(path.join(root, 'execution-workflow.js'), 'utf8');
+const gpsQuality = fs.readFileSync(path.join(root, 'location-quality.js'), 'utf8');
+const serviceWorker = fs.readFileSync(path.join(root, 'service-worker.js'), 'utf8');
 
 assert.match(html, /id="syncStatus"[^>]+role="status" aria-live="polite"/u,
   'connection state remains announced to assistive technology');
 assert.match(html, /id="availabilityState"[\s\S]*id="availabilityHelp"[\s\S]*id="availabilityToggle"/u,
   'operational availability is a distinct, accessible control with an explicit server-confirmation state');
+assert.match(html, /class="availability-panel presence-panel"[\s\S]*id="restaurantPresenceState"[\s\S]*id="restaurantPresenceHelp"[\s\S]*class="presence-actions"[\s\S]*id="restaurantCheckIn"[\s\S]*id="restaurantCheckOut"[\s\S]*id="restaurantPresenceQr"/u,
+  'presence copy and existing check-in, check-out and QR controls remain grouped and available');
+assert.match(css, /\.availability-panel\.presence-panel\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/u,
+  'presence copy and actions use separate rows so action intrinsic width cannot squeeze the status text');
+assert.match(css, /@media\s*\(max-width:\s*600px\)\s*\{\s*\.availability-panel\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/u,
+  'availability status uses the full mobile panel width before its disabled or active action');
+assert.match(app, /\['pointerdown','touchstart','mousedown'\]\.forEach\(type=>el\.addEventListener\(type,markHomeMapExplored/u,
+  'real touch and pointer input records manual exploration on the Leaflet container');
+assert.match(app, /function markHomeMapExplored\(event\)[\s\S]*homeAutoCenterPending=false/u,
+  'manual map exploration cancels a pending automatic recenter');
+assert.doesNotMatch(app, /dataset\.userMoved/u,
+  'manual exploration state is tied to the current Home visit rather than stale DOM data');
+assert.match(css, /grid-template-areas:\s*"intro intro"\s*"map availability"\s*"map presence"/u,
+  'desktop map and operational cards occupy explicit non-overlapping dashboard areas');
+assert.match(css, /#home \.availability-panel\.presence-panel\s*\{\s*grid-area:\s*presence;/u,
+  'desktop presence card occupies its own grid area beside the map');
+assert.match(css, /\.availability-panel\.presence-panel \.presence-actions\s*\{\s*width:\s*100%;\s*\}/u,
+  'presence controls use the full panel width and preserve their existing wrapping behavior');
 assert.match(html, /class="home-quick-actions"[\s\S]*id="scanDeliveryQrBtn"[\s\S]*id="newRaceBtn"[\s\S]*id="mapWorkBtn"/u,
   'QR, comanda and existing work-mode entry points remain reachable from Home with an active delivery');
+assert.match(html, /id="mapScreen"[\s\S]*class="back" data-back="routesScreen" aria-label="Voltar para Rotas"/u,
+  'the route map returns to the populated Routes screen instead of an empty delivery detail screen');
+assert.match(app, /function setRouteMapFullscreen\(expanded\)[\s\S]*aria-expanded[\s\S]*invalidateSize\(\{pan:false\}\)/u,
+  'map expansion exposes its exit state and invalidates the renderer after resizing');
+assert.match(app, /event\.key==='Escape'&&routeFullscreen/u,
+  'Escape exits the expanded map without changing route state');
+assert.match(html, /id="earnings"[\s\S]*class="back" data-back="home"[^>]*aria-label="Voltar ao início"/u,
+  'Earnings has an explicit accessible return path to Home');
+assert.match(baseCss, /\.qrScanner \.scanFrame\{[^}]*top:50%;left:50%;right:auto;bottom:auto;width:min\(64%,280px\);height:auto;aspect-ratio:1;transform:translate\(-50%,-50%\)/u,
+  'QR reader frame is centered and square without conflicting inset and width constraints');
 assert.match(baseCss, /\.captureBadge:not\(\[hidden\]\)\s*\{\s*display:\s*flex\s*\}/u,
   'the captured-photo badge is visible only after the app removes its hidden state');
 assert.match(app, /async function submitAvailabilityCommand[\s\S]*expectedRevision[\s\S]*commandId/u,
@@ -49,8 +79,14 @@ assert.match(app, /function deliveryDetailActions\(r,status,allowed\)[\s\S]*allo
   'delivery detail gives the first canonical action priority and keeps alternatives available');
 assert.match(app, /status==='ARRIVED'\?'No destino'/u,
   'arrival gets a distinct destination state label');
-assert.match(app, /status==='ARRIVED'\?'<div class="arrivalContext"/u,
-  'arrival explains the valid next step without adding a transition');
+assert.match(app, /r\.isReturn\?\(r\.returnStage==='awaiting-receipt'\?'Mercadoria entregue · aguardando confirmação do Restaurante'/u,
+  'return detail distinguishes physical handover from final restaurant confirmation');
+assert.match(app, /data-return-action="\$\{step\[0\]\}"/u,
+  'return deliveries expose their own start, arrival and handover actions');
+assert.match(app, /async function runReturnAction[\s\S]*DELIVERY_RETURN_STARTED[\s\S]*DELIVERY_RETURN_ARRIVED[\s\S]*DELIVERY_RETURN_HANDED_OVER/u,
+  'return operational facts use separate event types instead of customer-delivery actions');
+assert.match(app, /if\(r\.isReturn\)\{const steps=/u,
+  'return deliveries cannot invoke customer-completion actions');
 assert.match(workflow, /ARRIVED:[\s\S]*deliver[\s\S]*fail[\s\S]*return/u,
   'the presentation continues to derive arrival options from the canonical workflow');
 
@@ -71,10 +107,16 @@ assert.match(app, /id="nextPreferredMap"[\s\S]*mapProviderOptions[\s\S]*Google M
   'map keeps the configured external navigation action and all provider choices');
 assert.match(app, /map\?\.invalidateSize\(\{pan:false\}\);fitWorkMapOverview\(\)/u,
   'the route map refits real markers after its container dimensions settle');
+assert.match(css, /#mapScreen \.mapWrap\.fullscreen\s*\{\s*position:\s*fixed;\s*inset:\s*0;\s*z-index:\s*5000;\s*width:\s*auto;\s*height:\s*auto;\s*min-height:\s*0;\s*margin:\s*0/u,
+  'fullscreen map overrides the more specific normal map frame and occupies the viewport');
+assert.match(css, /#mapScreen \.mapWrap\.fullscreen #map\s*\{\s*height:\s*100%;\s*\}/u,
+  'Leaflet canvas follows the expanded map height');
 assert.match(baseCss, /\.mapWrap #map\{height:100%;min-height:0\}/u,
   'the Leaflet canvas fills its visual surface instead of extending below the clipped map frame');
 assert.match(baseCss, /filterTabs button:not\(\.active\)[^}]*background:var\(--card\)/u,
   'dark surface rules do not replace the active filter treatment');
+assert.match(css, /html\[data-resolved-theme="dark"\] \.filterTabs button\.active[^}]*color: #082713/u,
+  'active Entregas filters retain a dark foreground on the bright green selected surface');
 assert.match(css, /env\(safe-area-inset-bottom\)/u,
   'mobile content and navigation continue to account for the device safe area');
 assert.match(css, /button:focus-visible,[\s\S]*outline: 3px/u,
@@ -83,5 +125,28 @@ assert.match(css, /data-resolved-theme="dark"[^\n]*button\.active[^\n]*color: #0
   'selected green controls use dark foreground text in dark theme for readable contrast');
 assert.doesNotMatch(css, /!important/u,
   'the pilot presentation does not add important overrides');
+
+assert.match(html, /location-quality\.js\?v=0140\.9/u, 'GPS quality metadata is loaded before the application');
+assert.match(serviceWorker, /location-quality\.js\?v=0140\.9/u, 'GPS quality helper is included in the offline shell');
+assert.match(gpsQuality, /capturedAt < Number\(previousTimestamp \|\| 0\)/u, 'a late GPS response cannot replace a newer device reading');
+assert.match(app, /RotaMotoGpsQuality\.accept\(lat,lng,accuracy,timestamp,lastGps\?\.timestamp\)/u, 'GPS coordinates use the device capture timestamp and reject stale callbacks');
+assert.match(app, /maximumAge:0,timeout:15000/u, 'one-shot GPS requests require a fresh reading');
+assert.match(app, /maximumAge:0,timeout:20000/u, 'continuous GPS tracking requests fresh readings with a bounded timeout');
+assert.match(app, /function updateGpsAccuracyCircle\(/u, 'reported GPS accuracy is shown as a geographic uncertainty circle');
+assert.match(app, /scheduleRoutePreviewLayout\(\)[\s\S]*requestAnimationFrame\([\s\S]*requestAnimationFrame\([\s\S]*invalidateSize\(\{pan:false\}\)/u,
+  'the Rotas map waits for stable visible dimensions before Leaflet calculates its tile viewport');
+assert.match(app, /function initRoutePreviewMap\(\)[\s\S]*setView\(center,known\?12:4\)/u,
+  'the map uses a known device or delivery point, otherwise a labeled regional overview');
+assert.match(app, /function initRoutePreviewMap\(\)[\s\S]*row\.lat!=null&&row\.lng!=null&&Number\.isFinite/u,
+  'missing coordinates cannot be coerced to a fabricated 0,0 map center');
+assert.doesNotMatch(app.match(/function fitRoutePreviewOverview\(\)[\s\S]*?\n\}/u)?.[0]||'', /-23\.5505|-46\.6333/u,
+  'Visão geral does not invent a São Paulo device position when there are no known points');
+const routePreview = app.match(/function renderRoutePreview\(rs\)[\s\S]*?\n\}/u)?.[0] || '';
+assert.match(routePreview, /const deliveryBounds=\[\]/u, 'automatic route framing uses a separate collection of real delivery points');
+assert.match(routePreview, /deliveryBounds\.push\(point\)/u, 'real delivery coordinates remain eligible for automatic framing');
+assert.doesNotMatch(routePreview, /deliveryBounds\.push\(\[lastGps\.lat,lastGps\.lng\]\)/u, 'a GPS-only fix cannot force a late zoom that temporarily blanks the cartography');
+const canonicalGeometry = app.split('\n').find(line => line.startsWith('async function loadCanonicalRoadGeometry(rows)')) || '';
+assert.doesNotMatch(canonicalGeometry, /if\(lastGps\)bounds\.push/u, 'late road geometry cannot reframe a route map around the device alone');
+assert.match(app, /function fitRoutePreviewOverview\(\)[\s\S]*?if\(lastGps\)points\.push/u, 'the explicit Overview action can still include the actual current device position');
 
 console.log('Mobile operational hierarchy and regression guards: OK');

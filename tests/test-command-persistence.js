@@ -5,7 +5,7 @@ const lockStart=source.indexOf('function withRiderWriteLock('),lockEnd=source.in
 assert(lockStart>=0&&lockEnd>lockStart,'cross-tab write lock must exist');
 const start=source.indexOf('let riderCommandQueue=Promise.resolve();'),end=source.indexOf('\nfunction commitRaceCommand',start);
 assert(start>=0&&end>start,'command boundary must exist');
-const context=vm.createContext({structuredClone,Promise,console:{warn(){}},DB_NAME:'RotaMotoDB',navigator:{locks:{request(_name,_options,run){return run()}}},state:{races:[{id:'before'}],settings:{language:'pt',autoNext:0,theme:'auto'}},ui:{renders:0},localStorage:{setItem(){}},normalizeSettings:value=>value,readPersistedRiderSnapshot:async()=>structuredClone(context.ui.persisted||context.state),renderAll(){context.ui.renders++},persistOnly:async({snapshot})=>{if(context.ui.fail)throw Error('write failed');if(context.ui.wait){const gate=context.ui.wait;context.ui.wait=null;await gate.promise}context.ui.persisted=structuredClone(snapshot);context.ui.backup=structuredClone(snapshot)}});
+const context=vm.createContext({structuredClone,Promise,console:{warn(){}},DB_NAME:'RotaMotoDB',navigator:{locks:{request(_name,_options,run){return run()}}},state:{races:[{id:'before'}],settings:{language:'pt',autoNext:0,theme:'auto'}},ui:{renders:0},localStorage:{setItem(){}},normalizeSettings:value=>value,readPersistedRiderSnapshot:async()=>structuredClone(context.ui.persisted||context.state),renderAll(){context.ui.renders++},persistOnly:async({snapshot,deliveryProof})=>{if(context.ui.fail)throw Error('write failed');if(context.ui.wait){const gate=context.ui.wait;context.ui.wait=null;await gate.promise}context.ui.persisted=structuredClone(snapshot);context.ui.backup=structuredClone(snapshot);if(deliveryProof)context.ui.persistedProof=structuredClone(deliveryProof)}});
 context.ui.persisted=structuredClone(context.state);
 vm.runInContext(source.slice(lockStart,lockEnd)+'\n'+source.slice(start,end)+'\nthis.command=commitRiderCommand;',context);
 async function run(){
@@ -25,6 +25,9 @@ async function run(){
  assert.deepEqual(JSON.parse(JSON.stringify(context.ui.persisted.settings)),JSON.parse(JSON.stringify(context.state.settings)),'latest settings are persisted in queue order');
  assert.deepEqual(JSON.parse(JSON.stringify(context.ui.backup.settings)),JSON.parse(JSON.stringify(context.state.settings)),'backup advances after persistence');
  assert.equal(context.ui.renders,2,'each committed settings command publishes once');
+ const proof={id:'proof-durable',deliveryId:'delivery-1',media:{localDataUrl:'data:image/png;base64,AA=='}};
+ assert.equal(await context.command(()=>({deliveryProof:proof,result:'proof'})),'proof');
+ assert.deepEqual(JSON.parse(JSON.stringify(context.ui.persistedProof)),proof,'command boundary forwards DeliveryProof into the same durable IndexedDB commit');
  console.log('command persistence tests: OK');
 }
 run().catch(error=>{console.error(error);process.exitCode=1});

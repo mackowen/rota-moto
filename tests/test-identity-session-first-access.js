@@ -31,7 +31,7 @@ Promise.all([first, second]).then(values => {
 });
 assert.match(ui, /const hadAuthenticatedSession = Boolean\(current\)/u);
 assert.match(ui, /sessionRestoreErrorMessage\(error, hadAuthenticatedSession, message\)/u);
-assert.match(html, /identity-session-guard\.js[\s\S]{0,100}identity-ui\.js/u,
-  'session helper loads before the Motoboy identity client');
+assert.match(html, /identity-session-guard\.js[\s\S]*?app\.js[\s\S]*?identity-ui\.js/u,
+  'session guard loads before app startup and the identity client follows the app');
 assert.match(html, /identity-session-guard\.js[\s\S]*?app\.js/u, 'shared session/CSRF guard loads before the sync client');
 console.log('Motoboy anonymous-first-session regression: OK');
