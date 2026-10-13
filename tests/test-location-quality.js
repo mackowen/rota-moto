@@ -1,6 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict');
+const fs=require('node:fs');
 const gps=require('../location-quality.js');
+const app=fs.readFileSync(require.resolve('../app.js'),'utf8');
 const captured=Date.parse('2026-10-12T12:00:00.000Z');
 assert.deepEqual(gps.accept(-23.5,-46.6,14,captured,captured-1),{lat:-23.5,lng:-46.6,accuracy:14,timestamp:captured,at:new Date(captured).toISOString()});
 assert.equal(gps.accept(-23.5,-46.6,14,captured-1,captured),null,'older asynchronous GPS fix is ignored');
@@ -13,4 +15,7 @@ assert.equal(gps.accuracyText(250),'Precisão baixa: margem informada de cerca d
 assert.equal(gps.accuracyText(null),'Precisão não informada');
 assert.equal(gps.ageText(captured,captured+30_000),'leitura recente');
 assert.equal(gps.ageText(captured,captured+180_000),'leitura de 3 min atrás');
+assert.match(app,/error\?\.code===1\)return'Permissão de localização negada\./u,'permission denial has a specific operator message');
+assert.match(app,/error\?\.code===2\)return'Localização indisponível\./u,'unavailable GPS has a specific operator message');
+assert.match(app,/error\?\.code===3\)return'A localização demorou para responder\./u,'location timeout has a specific operator message');
 console.log('GPS quality/freshness: PASS');

@@ -23,10 +23,12 @@ assert.match(css, /\.availability-panel\.presence-panel\s*\{\s*grid-template-col
   'presence copy and actions use separate rows so action intrinsic width cannot squeeze the status text');
 assert.match(css, /@media\s*\(max-width:\s*600px\)\s*\{\s*\.availability-panel\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);\s*\}/u,
   'availability status uses the full mobile panel width before its disabled or active action');
-assert.match(app, /function refreshHomeMap\(\)[\s\S]*homeMap\.getContainer\(\)\.dataset\.userMoved/u,
-  'map interaction state is read from the Leaflet container, where the drag/zoom listeners write it');
-assert.doesNotMatch(app, /homeMap\.dataset\.userMoved/u,
-  'the Leaflet Map object is not mistaken for an HTMLElement during home rendering');
+assert.match(app, /\['pointerdown','touchstart','mousedown'\]\.forEach\(type=>el\.addEventListener\(type,markHomeMapExplored/u,
+  'real touch and pointer input records manual exploration on the Leaflet container');
+assert.match(app, /function markHomeMapExplored\(event\)[\s\S]*homeAutoCenterPending=false/u,
+  'manual map exploration cancels a pending automatic recenter');
+assert.doesNotMatch(app, /dataset\.userMoved/u,
+  'manual exploration state is tied to the current Home visit rather than stale DOM data');
 assert.match(css, /grid-template-areas:\s*"intro intro"\s*"map availability"\s*"map presence"/u,
   'desktop map and operational cards occupy explicit non-overlapping dashboard areas');
 assert.match(css, /#home \.availability-panel\.presence-panel\s*\{\s*grid-area:\s*presence;/u,

@@ -30,8 +30,8 @@ assert.match(app, /totals\.size\?formatCanonicalTotals\(totals\):'—'/u,
   'an empty period uses a compact neutral value instead of wrapping explanatory text as a metric');
 assert.match(app, /completed\.length\?'Entrega concluída\. O ganho ainda não foi confirmado pelo Restaurante\.'\s*:\s*'Nenhum ganho confirmado neste período\.'/u,
   'the explanatory state distinguishes pending synchronization from no confirmed earnings');
-assert.match(app, /tripChart\.classList\.add\('chartEmpty'\)[\s\S]*Nenhuma entrega concluída com ganho canônico neste período/u,
-  'a period without canonical records uses a compact empty state instead of drawing a zero chart');
+assert.match(app, /tripChart\.classList\.add\('chartEmpty'\)[\s\S]*emptyStateMarkup\('Nenhuma entrega concluída neste período'/u,
+  'a period without canonical records uses the shared compact empty state instead of drawing a zero chart');
 assert.match(app, /earningsNote\.hidden=earnedTotals\.size>0\|\|completedToday\.length===0/u,
   'the home synchronization notice is hidden when no delivery completed today');
 assert.match(app, /gpsDistances=completed\.map\(gpsKmForRace\)\.filter\(value=>value>0\),km=gpsDistances\.reduce/u,
