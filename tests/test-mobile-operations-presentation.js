@@ -124,8 +124,8 @@ assert.match(css, /data-resolved-theme="dark"[^\n]*button\.active[^\n]*color: #0
 assert.doesNotMatch(css, /!important/u,
   'the pilot presentation does not add important overrides');
 
-assert.match(html, /location-quality\.js\?v=0140\.8/u, 'GPS quality metadata is loaded before the application');
-assert.match(serviceWorker, /location-quality\.js\?v=0140\.8/u, 'GPS quality helper is included in the offline shell');
+assert.match(html, /location-quality\.js\?v=0140\.9/u, 'GPS quality metadata is loaded before the application');
+assert.match(serviceWorker, /location-quality\.js\?v=0140\.9/u, 'GPS quality helper is included in the offline shell');
 assert.match(gpsQuality, /capturedAt < Number\(previousTimestamp \|\| 0\)/u, 'a late GPS response cannot replace a newer device reading');
 assert.match(app, /RotaMotoGpsQuality\.accept\(lat,lng,accuracy,timestamp,lastGps\?\.timestamp\)/u, 'GPS coordinates use the device capture timestamp and reject stale callbacks');
 assert.match(app, /maximumAge:0,timeout:15000/u, 'one-shot GPS requests require a fresh reading');

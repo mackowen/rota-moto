@@ -114,7 +114,7 @@ html[data-resolved-theme="dark"] .top .syncStatus[data-state="offline"], html[da
 #home .driver-upcoming-row b { font-size: 12px; }
 #home .driver-upcoming-row small { margin-top: 3px; color: var(--moto-muted); font-size: 10px; line-height: 1.3; }
 #home .driver-upcoming-row > span:last-child { color: var(--moto-muted); font-size: 18px; }
-#home .driver-empty-queue { margin: 0; padding: 11px 0; border-top: 1px solid var(--moto-line); color: var(--moto-muted); font-size: 12px; }
+#home .driver-empty-queue { margin: 8px 0 0; }
 #home .driver-queue-foot { display: flex; gap: 6px 16px; flex-wrap: wrap; padding-top: 9px; border-top: 1px solid var(--moto-line); color: var(--moto-muted); font-size: 10px; }
 #home .driver-queue-foot b { color: var(--moto-ink); font-variant-numeric: tabular-nums; }
 #home .driver-last-completion { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; }
