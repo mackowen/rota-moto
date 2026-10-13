@@ -19,10 +19,20 @@ assert.match(app, /visualViewport\?\.addEventListener\('resize',invalidateVisibl
 assert.match(app, /responsiveMapObserver\?\.observe\(container\)/u);
 assert.match(html, /favicon\.svg\?v=0140\.1/u);
 assert.match(html, /pilot-views\.css\?v=0140\.6/u);
-assert.match(worker, /CACHE_PREFIX\}v43\.43/u);
+assert.match(worker, /CACHE_PREFIX\}v43\.44/u);
 assert.match(worker, /\.\/favicon\.svg\?v=0140\.1/u);
 assert.match(worker, /\.\/pilot-views\.css\?v=0140\.6/u);
 assert.match(icon, /viewBox="0 0 64 64"/u);
 assert.match(icon, /M32 11c-7\.7 0-14 6\.3-14 14/u);
+assert.match(html, /id="mapActionControls" class="mapActionControls" role="group" aria-label="Controles do mapa"[\s\S]*?id="fullscreenMap"[\s\S]*?id="workOverview"[\s\S]*?<\/div><div id="map">/u);
+assert.match(views, /#mapScreen \.mapActionControls\s*\{[^}]*display:\s*grid[^}]*gap:\s*8px/u);
+assert.match(views, /#mapScreen \.mapActionControls\s*>\s*\.mapFloat\s*\{[^}]*position:\s*relative[^}]*inset:\s*auto/u);
+assert.match(html, /<div class="mapStage"><div id="routePreviewMap"><\/div><button id="routeOverview"/u,
+  'the homonymous Route overview action remains in the separate planning map');
+assert.match(app, /\$\('#fullscreenMap'\)\.onclick=\(\)=>setRouteMapFullscreen\(!routeFullscreen\)/u);
+assert.match(app, /\$\('#workOverview'\)\.onclick=\(\)=>\{closeMapPopups\(\);workOverviewUsed=true;fitWorkMapOverview\(\)/u);
+assert.match(app, /\$\('#routeOverview'\)\.onclick=\(\)=>\{closeMapPopups\(\);fitRoutePreviewOverview\(\)/u,
+  'the overview action in the planning route remains independently wired');
 
 console.log('Motoboy desktop dashboard map separation and layout refresh: PASS');
+console.log('Motoboy Location map controls are grouped and independently actionable: PASS');

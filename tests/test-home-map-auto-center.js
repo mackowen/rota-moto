@@ -36,7 +36,7 @@ assert.match(locator, /homeAutoCenterPending=false/u,
 assert.match(locator, /homeMap\?\.setView\(\[position\.coords\.latitude,position\.coords\.longitude\],16/u,
   'manual locate keeps its existing user-visible behavior');
 assert.match(html, /app\.js\?v=0140\.10/u, 'HTML references the updated application asset');
-assert.match(worker, /v43\.43/u, 'service worker cache version is advanced');
+assert.match(worker, /v43\.44/u, 'service worker cache version is advanced');
 assert.match(worker, /app\.js\?v=0140\.10/u, 'offline shell references the same application asset');
 
 console.log('Home GPS one-shot automatic centering contract: PASS');

@@ -13,6 +13,6 @@ assert.match(updateMarker,/homeDriverMarker\.setLatLng\(position\)/u,'existing m
 assert.doesNotMatch(updateMarker,/homeMap\.remove\(/u,'marker update cannot destroy the map');
 assert.match(app,/homeDriverMarker=null/u,'invalid or unavailable location removes only its marker');
 assert.match(html,/app\.js\?v=0140\.10/u);
-assert.match(worker,/v43\.43/u);
+assert.match(worker,/v43\.44/u);
 assert.match(worker,/app\.js\?v=0140\.10/u);
 console.log('Home GPS marker lifecycle contract: PASS');
