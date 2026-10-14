@@ -13,6 +13,8 @@ assert.equal(R.decide({localVersion:2,incomingVersion:3,localPending:true}),'con
 assert.equal(R.decide({localVersion:3,incomingVersion:2}),'stale');
 assert.equal(R.decide({localVersion:1,incomingVersion:2,tombstone:true}),'tombstone');
 for(const status of ['accepted','duplicate','rejected','conflict'])assert.equal(R.statusFromAck(status),status);
+const operationRows=[{id:'operation:DeliveryEvent:event-a',status:'accepted'},{id:'canonical:Delivery:delivery-a',status:'canonical'},{id:'operation:DeliveryProof:proof-a',status:'conflict'}];
+const operationIndex=R.operationStatusIndex(operationRows);assert.equal(operationIndex.size,2);assert.equal(operationIndex.get('operation:DeliveryEvent:event-a'),operationRows[0]);assert.equal(operationIndex.get('operation:DeliveryProof:proof-a'),operationRows[2]);assert.equal(operationIndex.get('canonical:Delivery:delivery-a'),undefined,'only operation statuses are indexed');
 assert.equal(R.retryAfterMilliseconds('7'),7000,'HTTP Retry-After delta seconds are honored');
 assert.equal(R.retryAfterMilliseconds('Thu, 01 Jan 1970 00:00:12 GMT',10000),2000,'HTTP Retry-After dates are converted against the current time');
 assert.equal(R.retryAfterMilliseconds('invalid',10000),null,'invalid Retry-After falls back to exponential backoff');

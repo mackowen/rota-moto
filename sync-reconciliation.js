@@ -59,6 +59,7 @@
  }
  function sourceVersionMatches(record,snapshot){return !!record&&Number(record?.sync?.version||record?.version||1)===Number(snapshot)}
  function isPendingFact(record){return !!record&&!record.acknowledgedAt&&!record.localOnly&&!['synced','canonical'].includes(record.sync?.state)}
+ function operationStatusIndex(operations){const index=new Map();for(const row of operations||[])if(typeof row?.id==='string'&&row.id.startsWith('operation:')&&!index.has(row.id))index.set(row.id,row);return index}
  function hasPendingDeliveryFacts(records,syncMap,operationKey,deliveryIds){const ids=new Set((deliveryIds||[]).filter(Boolean).map(String));return (records||[]).some(row=>ids.has(String(row.deliveryId||row.entityId||''))&&isPendingFact(row)&&!['accepted','duplicate'].includes(syncMap?.get(operationKey(row))?.status))}
  function versionedDeliveryFactCanFollow(fact,canonicalVersion){const expected=Number(fact?.payload?.expectedVersion),current=Number(canonicalVersion);return fact?.entity==='delivery'&&Number.isSafeInteger(expected)&&expected>0&&Number.isSafeInteger(current)&&current>0&&expected>=current}
  function shouldRetry(status,changed){return status==='pending'||(['accepted','duplicate'].includes(status)&&changed)||(['rejected','conflict'].includes(status)&&changed)}
@@ -112,5 +113,5 @@
   return result;
  }
  function createCoordinator({locks,lockName='rotamoto-sync'}={}){let active=null;return Object.freeze({run(task){if(typeof task!=='function')return Promise.reject(new TypeError('Tarefa de sync inválida.'));if(active)return active;const execute=()=>Promise.resolve().then(task);active=locks?.request?locks.request(lockName,{mode:'exclusive'},execute):execute();return active.finally(()=>{active=null})}})}
- return Object.freeze({canonicalEvent,decide,statusFromAck,expectedAckOperations,validateOperationAck,sourceVersionMatches,retryAfterMilliseconds,retryDelay,shouldRetry,isPendingFact,hasPendingDeliveryFacts,versionedDeliveryFactCanFollow,findCanonicalFact,compactInbox,createCoordinator,orderVersionedEvents,projectMotoboyDelivery,projectRestaurantDelivery});
+ return Object.freeze({canonicalEvent,decide,statusFromAck,expectedAckOperations,validateOperationAck,sourceVersionMatches,retryAfterMilliseconds,retryDelay,shouldRetry,isPendingFact,operationStatusIndex,hasPendingDeliveryFacts,versionedDeliveryFactCanFollow,findCanonicalFact,compactInbox,createCoordinator,orderVersionedEvents,projectMotoboyDelivery,projectRestaurantDelivery});
 });
