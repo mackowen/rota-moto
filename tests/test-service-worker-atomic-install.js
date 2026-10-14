@@ -39,7 +39,7 @@ async function run(listener, event = {}) {
   const healthy = await setup('/vendor/maplibre/maplibre-gl-worker.js');
   await run(healthy.listeners.get('install'));
   const [cacheName] = [...healthy.stores.keys()];
-  assert.match(cacheName, /v43\.44$/u);
+  assert.match(cacheName, /v43\.45$/u);
   assert.equal([...healthy.stores.get(cacheName).keys()].some(url => url.includes('maplibre-gl-worker.js')), false,
     'optional worker outage does not prevent an offline shell update');
 

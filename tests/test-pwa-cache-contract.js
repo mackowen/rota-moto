@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');const fs=require('node:fs');
 const worker=fs.readFileSync(require.resolve('../service-worker.js'),'utf8');const index=fs.readFileSync(require.resolve('../index.html'),'utf8');const runtime=fs.readFileSync(require.resolve('../map-runtime.js'),'utf8');const manifest=JSON.parse(fs.readFileSync(require.resolve('../manifest.json'),'utf8'));
-assert(worker.includes('v43.44'));
+assert(worker.includes('v43.45'));
 assert(index.includes('rel="icon" type="image/svg+xml" href="favicon.svg?v=0140.1"')&&worker.includes('./favicon.svg'),'shared brand symbol is available offline without replacing PWA raster icons');
 assert.deepEqual(manifest.icons.map(icon=>icon.src),['icons/icon-192.png','icons/icon-512.png'],'existing PWA install icons stay unchanged');
 assert(index.includes('pilot-views.css?v=0140.6')&&worker.includes('./pilot-views.css?v=0140.6'));
